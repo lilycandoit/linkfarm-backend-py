@@ -1,61 +1,113 @@
-from flask import Flask, jsonify, request
+# Import Flask framework and necessary modules
+from flask import Flask, jsonify, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
+from sqlalchemy import text
 import os
+from datetime import datetime
+
+# Import our configuration
+from config import config
+
+# Import extensions
+from extensions import db
 
 # Load environment variables from .env file
-# This must be called before accessing os.environ
 load_dotenv()
 
+# Create Flask application instance
 app = Flask(__name__)
 
+# Load configuration based on environment
+# Gets FLASK_ENV from environment, defaults to 'development'
+env = os.getenv('FLASK_ENV', 'development')
+app.config.from_object(config[env])
+
+# Initialize extensions with our Flask app
+db.init_app(app)
+
+# Import models so SQLAlchemy knows about them
+# This must be done AFTER db is initialized
+from models.user import User
+
 # Configure CORS (Cross-Origin Resource Sharing)
-CORS(app, origins=[os.getenv('FRONTEND_URL', 'http://localhost:3000')])
+# Uses the CORS_ORIGINS from our config
+CORS(app, origins=app.config['CORS_ORIGINS'])
 
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+# ============ ROUTES (API ENDPOINTS) ============
 
-### ===ROUTES===
 # Health check endpoint - test if server is running
 @app.route('/api/health', methods=['GET'])
-def health_check():
+def health_check() -> Response:
     """
-    Simple health check endpoint
-    Returns JSON with server status and timestamp
+    Health check endpoint with database status
+    Returns JSON with server status and database connection
     """
-    from datetime import datetime
+    db_ok = False
+    try:
+        # A quick check to see if we can connect to the DB
+        with app.app_context():
+            with db.engine.connect() as connection:
+                connection.execute(text('SELECT 1'))
+            db_ok = True
+    except Exception:
+        pass  # We don't need to log the error here, /api/test-db is for that
 
     return jsonify({
         'status': 'OK',
         'message': 'LinkFarm Python API is running! 🐍',
         'timestamp': datetime.now().isoformat(),
-        'version': '1.0.0'
+        'version': '1.0.0',
+        'database_status': "Connected" if db_ok else "Disconnected",
+        'environment': os.getenv('FLASK_ENV', 'production')
     })
 
-# Test endpoint to verify database connection later
+# Database connection test endpoint
 @app.route('/api/test-db', methods=['GET'])
-def test_database():
+def test_db_endpoint() -> Response:
     """
-    Test database connection
-    We'll implement this after setting up SQLAlchemy
+    Detailed database connection test
+    Shows database URL and connection status
     """
-    return jsonify({
-        'message': 'Database connection test - coming soon!',
-        'database_url': os.getenv('DATABASE_URL', 'Not configured')
-    })
+    try:
+        # Use a connection from the engine to execute a query
+        with db.engine.connect() as connection:
+            result = connection.execute(text('SELECT version()'))
+            version = result.scalar_one()
 
-# Root endpoint - helpful for debugging
+        return jsonify({
+            'status': 'success',
+            'message': 'Database connection successful! 🗄️',
+            'database_url_preview': f"{app.config['SQLALCHEMY_DATABASE_URI'][:50]}...",
+            'postgres_version': version,
+            'sqlalchemy_echo': app.config['SQLALCHEMY_ECHO']
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database connection failed.',
+            'error_type': type(e).__name__,
+            'error_details': str(e),
+            'database_url_preview': f"{app.config['SQLALCHEMY_DATABASE_URI'][:50]}..."
+        }), 500
+
+# Root endpoint - shows available endpoints
 @app.route('/', methods=['GET'])
-def root():
+def root() -> Response:
     """
-    Root endpoint - shows available endpoints
+    Root endpoint - shows API information and available endpoints
     """
     return jsonify({
         'message': 'Welcome to LinkFarm API! 🌱',
+        'version': '1.0.0',
+        'environment': app.config['ENV'],
         'endpoints': {
             'health': '/api/health',
             'test_db': '/api/test-db',
             'farmers': '/api/farmers (coming soon)',
-            'products': '/api/products (coming soon)'
+            'products': '/api/products (coming soon)',
+            'inquiries': '/api/inquiries (coming soon)',
         }
     })
 
@@ -63,10 +115,9 @@ def root():
 
 # Handle 404 errors (route not found)
 @app.errorhandler(404)
-def not_found(error):
+def not_found(_error: Exception) -> tuple[Response, int]:
     """
-    Custom 404 handler
-    Returns JSON instead of HTML error page
+    Custom 404 handler - returns JSON instead of HTML.
     """
     return jsonify({
         'error': 'Endpoint not found',
@@ -76,10 +127,9 @@ def not_found(error):
 
 # Handle 500 errors (internal server errors)
 @app.errorhandler(500)
-def internal_error(error):
+def internal_error(_error: Exception) -> tuple[Response, int]:
     """
-    Custom 500 handler
-    Returns JSON error response
+    Custom 500 handler - returns JSON error response.
     """
     return jsonify({
         'error': 'Internal server error',
@@ -87,26 +137,35 @@ def internal_error(error):
         'status_code': 500
     }), 500
 
-# ============ RUN APPLICATION ============
+# ============ APPLICATION STARTUP ============
 
-# This block only runs when you execute this file directly
-# (not when imported as a module)
 if __name__ == '__main__':
-    # Get configuration from environment variables
-    debug_mode = os.getenv('FLASK_ENV') == 'development'
-    port = int(os.getenv('PORT', 5000))
-
     # Print startup information
+    port = int(os.getenv('PORT', 5000))
     print("🚀 Starting LinkFarm API...")
-    print(f"📍 Health check: http://localhost:{port}/api/health")
     print(f"🌍 Environment: {os.getenv('FLASK_ENV', 'production')}")
-    print(f"🗄️  Database: {os.getenv('DATABASE_URL', 'Not configured')}")
+    print(f"🔧 Debug mode: {app.config['DEBUG']}")
+    print(f"🔗 API running at: http://localhost:{port}/")
+
+    # Test database connection on startup
+    # The 'with app.app_context()' is crucial here.
+    # It ensures that the application context is available,
+    # which SQLAlchemy needs to access the engine.
+    with app.app_context():
+        try:
+            # Create database tables if they don't exist.
+            # This will create a 'users' table based on the User model.
+            db.create_all()
+            print("✅ Database tables checked/created.")
+            db.engine.connect().close()
+            print("✅ Database connection successful.")
+        except Exception as e:
+            print("❌ Database connection failed. Please check your DATABASE_URL and ensure the database server is running.")
+            print(f"   Error: {e}")
 
     # Start the Flask development server
-    # debug=True enables auto-reload when you save files
-    # host='0.0.0.0' allows external connections (needed for some deployments)
     app.run(
-        debug=debug_mode,
+        debug=app.config['DEBUG'],
         host='0.0.0.0',
         port=port
     )
