@@ -1,5 +1,5 @@
 # Import Flask framework and necessary modules
-from flask import Flask, jsonify, Response
+from flask import Flask, jsonify, Response, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 from sqlalchemy import text
@@ -27,12 +27,16 @@ app.config.from_object(config[env])
 db.init_app(app)
 
 # Import models so SQLAlchemy knows about them
-# This must be done AFTER db is initialized
+# This must be done AFTER db is initialized, but before blueprints are registered
 from models.user import User
 
 # Configure CORS (Cross-Origin Resource Sharing)
 # Uses the CORS_ORIGINS from our config
 CORS(app, origins=app.config['CORS_ORIGINS'])
+
+# Import and register Blueprints
+from routes.auth import auth_bp
+app.register_blueprint(auth_bp, url_prefix='/api') # All routes in auth_bp will be prefixed with /api
 
 # ============ ROUTES (API ENDPOINTS) ============
 
@@ -110,6 +114,39 @@ def root() -> Response:
             'inquiries': '/api/inquiries (coming soon)',
         }
     })
+
+# ============ DEVELOPMENT-ONLY ROUTES ============
+
+# WARNING: This route is for development only and will delete all data.
+@app.route('/api/dev/reset-db', methods=['POST'])
+def reset_db():
+    """
+    (Development only) Drops all tables and recreates them.
+    This is useful for applying schema changes.
+    """
+    if app.config['DEBUG'] is False:
+        return jsonify({'error': 'This endpoint is only available in development mode.'}), 403
+
+    try:
+        with app.app_context():
+            # Explicitly drop the 'users' table with CASCADE.
+            # This handles cases where other tables (like 'farmers')
+            # might exist in the DB and have foreign keys to 'users',
+            # even if those tables are not defined in our current models.
+            db.session.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
+            db.session.commit() # Commit the raw SQL drop
+
+            db.drop_all()
+            db.create_all()
+        return jsonify({'message': 'Database has been reset successfully.'}), 200
+    except Exception as e:
+        db.session.rollback() # Rollback in case of error during raw SQL or db.drop_all()
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to reset database.',
+            'error_type': type(e).__name__,
+            'error_details': str(e)
+        }), 500
 
 # ============ ERROR HANDLERS ============
 
