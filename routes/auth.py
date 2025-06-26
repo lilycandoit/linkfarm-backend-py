@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 from extensions import db
 from models.user import User
 import jwt
 from datetime import datetime, timedelta, timezone
+from utils.decorators import token_required
 
 # Create a Blueprint for authentication routes
 # The name 'auth' is used internally by Flask for routing and URL generation.
@@ -49,6 +50,24 @@ def login_user():
     return jsonify({
         'message': 'Login successful!',
         'token': token
+    }), 200
+
+@auth_bp.route('/profile', methods=['GET'])
+@token_required
+def get_profile():
+    """
+    A protected route that returns the current user's profile.
+    The user is identified by the JWT provided in the Authorization header.
+    """
+    # The `token_required` decorator has already verified the token
+    # and placed the user object in g.current_user.
+    current_user = g.current_user
+
+    return jsonify({
+        'id': current_user.id,
+        'username': current_user.username,
+        'email': current_user.email,
+        'role': current_user.role
     }), 200
 
 # User Registration endpoint
