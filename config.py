@@ -42,6 +42,16 @@ class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_ECHO = True  # Print all SQL queries (helpful for learning!)
 
+class TestingConfig(Config):
+    """
+    Testing environment configuration
+    """
+    TESTING = True
+    DEBUG = True
+    # Use an in-memory SQLite database for tests for speed and isolation
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SQLALCHEMY_ECHO = False # Keep test output clean
+
 class ProductionConfig(Config):
     """
     Production environment configuration
@@ -53,6 +63,7 @@ class ProductionConfig(Config):
 # Dictionary to easily switch between configurations
 config = {
     'development': DevelopmentConfig,
+    'testing': TestingConfig,
     'production': ProductionConfig,
     'default': DevelopmentConfig
 }

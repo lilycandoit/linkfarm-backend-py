@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import request, jsonify, g, current_app
 import jwt
+from extensions import db
 from models.user import User
 
 def token_required(f):
@@ -25,8 +26,8 @@ def token_required(f):
         try:
             # Decode the token using the app's SECRET_KEY
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
-            # Find the user based on the 'sub' (subject) claim in the token
-            current_user = User.query.get(data['sub'])
+            # Find the user based on the 'sub' (subject) claim in the token using the modern session.get()
+            current_user = db.session.get(User, data['sub'])
             if not current_user:
                  return jsonify({'error': 'Unauthorized', 'message': 'User not found.'}), 401
             # Store the user object in Flask's 'g' object for this request
