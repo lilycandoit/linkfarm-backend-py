@@ -1,11 +1,55 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from extensions import db
 from models.user import User
+import jwt
+from datetime import datetime, timedelta, timezone
 
 # Create a Blueprint for authentication routes
 # The name 'auth' is used internally by Flask for routing and URL generation.
 # __name__ is the standard Python way to refer to the current module.
 auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/login', methods=['POST'])
+def login_user():
+    """
+    Authenticates a user and returns a JWT.
+    Expects a JSON payload with 'username' and 'password'.
+    """
+    data = request.get_json()
+
+    if not data or not all(key in data for key in ['username', 'password']):
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Missing username or password.'
+        }), 400
+
+    username = data.get('username')
+    password = data.get('password')
+
+    user = User.query.filter_by(username=username).first()
+
+    # Use a generic error message to avoid leaking information about whether a username exists
+    if not user or not user.check_password(password):
+        return jsonify({'error': 'Unauthorized', 'message': 'Invalid credentials.'}), 401
+
+    # --- Create JWT ---
+    # The token payload contains the user's ID and expiration information.
+    payload = {
+        'sub': user.id,  # 'sub' (subject) is a standard claim for user ID
+        'iat': datetime.now(timezone.utc),  # 'iat' (issued at) timestamp
+        'exp': datetime.now(timezone.utc) + timedelta(hours=24)  # 'exp' (expiration) timestamp
+    }
+
+    token = jwt.encode(
+        payload,
+        current_app.config['SECRET_KEY'],
+        algorithm='HS256'
+    )
+
+    return jsonify({
+        'message': 'Login successful!',
+        'token': token
+    }), 200
 
 # User Registration endpoint
 @auth_bp.route('/register', methods=['POST'])
