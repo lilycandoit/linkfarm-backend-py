@@ -27,7 +27,8 @@ def login_user():
     username = data.get('username')
     password = data.get('password')
 
-    user = User.query.filter_by(username=username).first()
+    # Use modern SQLAlchemy 2.0 syntax for querying
+    user = db.session.execute(db.select(User).filter_by(username=username)).scalar_one_or_none()
 
     # Use a generic error message to avoid leaking information about whether a username exists
     if not user or not user.check_password(password):
@@ -92,10 +93,12 @@ def register_user():
     password = data.get('password')
 
     # Check if user already exists
-    if User.query.filter_by(username=username).first():
+    # Use modern SQLAlchemy 2.0 syntax for querying
+    if db.session.execute(db.select(User).filter_by(username=username)).scalar_one_or_none():
         return jsonify({'error': 'Conflict', 'message': 'Username already exists.'}), 409
 
-    if User.query.filter_by(email=email).first():
+    # Use modern SQLAlchemy 2.0 syntax for querying
+    if db.session.execute(db.select(User).filter_by(email=email)).scalar_one_or_none():
         return jsonify({'error': 'Conflict', 'message': 'Email already registered.'}), 409
 
     # --- Create and save new user ---

@@ -41,3 +41,21 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
+
+def role_required(allowed_roles):
+    """
+    A decorator to ensure that the authenticated user has one of the allowed roles.
+    This decorator must be used *after* @token_required.
+    """
+    def decorator(f):
+        @wraps(f)
+        @token_required # Ensure token is present and user is loaded into g.current_user
+        def decorated_function(*args, **kwargs):
+            if g.current_user.role not in allowed_roles:
+                return jsonify({
+                    'error': 'Forbidden',
+                    'message': 'You do not have the necessary permissions to access this resource.'
+                }), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator

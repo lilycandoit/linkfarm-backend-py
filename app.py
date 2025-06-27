@@ -37,6 +37,8 @@ CORS(app, origins=app.config['CORS_ORIGINS'])
 # Import and register Blueprints
 from routes.auth import auth_bp
 app.register_blueprint(auth_bp, url_prefix='/api') # All routes in auth_bp will be prefixed with /api
+from routes.farmer import farmer_bp
+app.register_blueprint(farmer_bp, url_prefix='/api') # All routes in farmer_bp will be prefixed with /api
 
 # ============ ROUTES (API ENDPOINTS) ============
 
@@ -133,7 +135,20 @@ def reset_db():
             # This handles cases where other tables (like 'farmers')
             # might exist in the DB and have foreign keys to 'users',
             # even if those tables are not defined in our current models.
+            # We commit this to ensure the table is dropped before proceeding.
             db.session.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
+            db.session.commit() # Commit the raw SQL drop
+
+            # Explicitly drop the 'products' table with CASCADE.
+            db.session.execute(text("DROP TABLE IF EXISTS products CASCADE;"))
+            db.session.commit() # Commit the raw SQL drop
+
+            # Explicitly drop the 'inquiries' table with CASCADE.
+            db.session.execute(text("DROP TABLE IF EXISTS inquiries CASCADE;"))
+            db.session.commit() # Commit the raw SQL drop
+
+            # Explicitly drop the 'farmers' table with CASCADE for similar reasons.
+            db.session.execute(text("DROP TABLE IF EXISTS farmers CASCADE;"))
             db.session.commit() # Commit the raw SQL drop
 
             db.drop_all()

@@ -11,9 +11,14 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    # Increased length for future-proofing with different hashing algorithms
+    password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     role = db.Column(db.String(20), nullable=False, default='user') # Roles: user, farmer, admin
+
+    # One-to-one relationship with Farmer
+    # uselist=False indicates a one-to-one relationship
+    farmer = db.relationship('Farmer', backref='user', uselist=False, cascade='all, delete-orphan')
 
     def __repr__(self):
         """
