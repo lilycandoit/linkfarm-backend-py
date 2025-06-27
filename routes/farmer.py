@@ -7,6 +7,27 @@ from utils.decorators import token_required, role_required
 # Create a Blueprint for farmer routes
 farmer_bp = Blueprint('farmer', __name__)
 
+@farmer_bp.route('/farmers', methods=['GET'])
+def list_farmers():
+    """
+    Public endpoint to retrieve a paginated list of all farmers.
+    Crucial for the main discovery page of the frontend.
+    """
+    # Simple pagination using query parameters (e.g., /farmers?page=1&per_page=10)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    # Use the paginate() method for easy pagination
+    pagination = db.session.query(Farmer).paginate(page=page, per_page=per_page, error_out=False)
+    farmers = pagination.items
+
+    return jsonify({
+        'farmers': [farmer.to_dict() for farmer in farmers],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    }), 200
+
 @farmer_bp.route('/farmers', methods=['POST'])
 @token_required
 @role_required(['user', 'farmer', 'admin']) # Allow users, farmers, and admins to access this route
@@ -67,19 +88,8 @@ def get_farmer_profile(farmer_id):
     if not farmer:
         return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
 
-    return jsonify({
-        'id': farmer.id,
-        'user_id': farmer.user_id,
-        'farm_name': farmer.farm_name,
-        'first_name': farmer.first_name,
-        'last_name': farmer.last_name,
-        'location': farmer.location,
-        'phone': farmer.phone,
-        'description': farmer.description,
-        'profile_image_url': farmer.profile_image_url,
-        'created_at': farmer.created_at.isoformat(),
-        'updated_at': farmer.updated_at.isoformat()
-    }), 200
+    # Return the farmer's profile AND their list of products in one call
+    return jsonify(farmer.to_dict(include_products=True)), 200
 
 @farmer_bp.route('/farmers/<int:farmer_id>', methods=['PUT'])
 @token_required

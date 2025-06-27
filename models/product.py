@@ -30,3 +30,33 @@ class Product(db.Model):
         Provides a developer-friendly representation of the Product object.
         """
         return f'<Product {self.name} (Farmer ID: {self.farmer_id})>'
+
+    def to_dict(self):
+        """Serializes the Product object to a dictionary."""
+        return {
+            'id': self.id,
+            'farmer_id': self.farmer_id,
+            'name': self.name,
+            'description': self.description,
+            'price': str(self.price), # Keep as string to avoid float precision issues
+            'unit': self.unit,
+            'category': self.category,
+            'image_url': self.image_url,
+            'is_available': self.is_available
+        }
+
+    def to_dict(self):
+        """Serializes the Product object to a dictionary."""
+        return {
+            'id': self.id,
+            'farmer_id': self.farmer_id,
+            'name': self.name,
+            'description': self.description,
+            'price': str(self.price), # Keep as string to avoid float precision issues
+            'unit': self.unit,
+            'category': self.category,
+            'image_url': self.image_url,
+            'is_available': self.is_available,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }

@@ -35,3 +35,25 @@ class Farmer(db.Model):
         Provides a developer-friendly representation of the Farmer object.
         """
         return f'<Farmer {self.farm_name} (User ID: {self.user_id})>'
+
+    def to_dict(self, include_products=False):
+        """
+        Serializes the Farmer object to a dictionary.
+        This single method combines all fields and optionally includes products.
+        """
+        data = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'farm_name': self.farm_name,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'location': self.location,
+            'phone': self.phone,
+            'description': self.description,
+            'profile_image_url': self.profile_image_url,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
+        }
+        if include_products:
+            data['products'] = [product.to_dict() for product in self.products]
+        return data

@@ -41,6 +41,10 @@ from routes.farmer import farmer_bp
 app.register_blueprint(farmer_bp, url_prefix='/api') # All routes in farmer_bp will be prefixed with /api
 from routes.product import product_bp
 app.register_blueprint(product_bp, url_prefix='/api') # All routes in product_bp will be prefixed with /api
+from routes.dashboard import dashboard_bp
+app.register_blueprint(dashboard_bp, url_prefix='/api') # All routes in dashboard_bp will be prefixed with /api
+from routes.inquiry import inquiry_bp
+app.register_blueprint(inquiry_bp, url_prefix='/api') # All routes in inquiry_bp will be prefixed with /api
 
 # ============ ROUTES (API ENDPOINTS) ============
 
@@ -110,12 +114,20 @@ def root() -> Response:
         'message': 'Welcome to LinkFarm API! 🌱',
         'version': '1.0.0',
         'environment': app.config['ENV'],
+        # Updated to reflect the current state of the API
         'endpoints': {
-            'health': '/api/health',
-            'test_db': '/api/test-db',
-            'farmers': '/api/farmers (coming soon)',
-            'products': '/api/products (coming soon)',
-            'inquiries': '/api/inquiries (coming soon)',
+            'public_routes': {
+                'health_check': '/api/health',
+                'list_farmers': '/api/farmers',
+                'get_farmer_profile': '/api/farmers/<farmer_id>',
+                'list_products_by_farmer': '/api/farmers/<farmer_id>/products',
+                'get_product': '/api/products/<product_id>',
+                'submit_inquiry': '/api/inquiries'
+            },
+            'auth_routes': {
+                'register': '/api/register',
+                'login': '/api/login'
+            }
         }
     })
 

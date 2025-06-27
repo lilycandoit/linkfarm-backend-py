@@ -115,20 +115,16 @@ def second_farmer_auth_data(client, init_database):
     This is useful for testing ownership and authorization rules.
     """
     # Register a new user
-    client.post('/api/register',
-                data=json.dumps(dict(
-                    username='farmer_two',
-                    email='farmer_two@example.com',
-                    password='password123'
-                )),
-                content_type='application/json')
+    user_data = {
+        'username': 'farmer_two',
+        'email': 'farmer_two@example.com',
+        'password': 'password123'
+    }
+    client.post('/api/register', data=json.dumps(user_data), content_type='application/json')
 
     # Log in to get a token
     login_res = client.post('/api/login',
-                            data=json.dumps(dict(
-                                username='farmer_two',
-                                password='password123'
-                            )),
+                            data=json.dumps({k: v for k, v in user_data.items() if k != 'email'}),
                             content_type='application/json')
 
     headers = {'Authorization': f'Bearer {login_res.get_json()["token"]}'}
