@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, g
 from extensions import db
 from models.product import Product
+from models.farmer import Farmer
 from utils.decorators import token_required, role_required
 
 # Create a Blueprint for product routes
@@ -68,7 +69,6 @@ def get_product(product_id):
         'is_available': product.is_available
     }), 200
 
-### Update a product
 @product_bp.route('/products/<int:product_id>', methods=['PUT'])
 @token_required
 @role_required(['farmer', 'admin']) # Only farmers or admins can attempt to update
@@ -100,6 +100,34 @@ def update_product(product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+
+@product_bp.route('/farmers/<int:farmer_id>/products', methods=['GET'])
+def list_products_by_farmer(farmer_id):
+    """
+    Retrieves a list of all products for a specific farmer.
+    This is a public endpoint.
+    """
+    # First, check if the farmer exists
+    farmer = db.session.get(Farmer, farmer_id)
+    if not farmer:
+        return jsonify({'error': 'Not Found', 'message': 'Farmer not found.'}), 404
+
+    # Use the 'products' relationship on the Farmer model to get all associated products
+    products = farmer.products
+
+    # Serialize the list of products into a JSON-friendly format
+    products_list = [{
+        'id': product.id,
+        'name': product.name,
+        'description': product.description,
+        'price': str(product.price),
+        'unit': product.unit,
+        'category': product.category,
+        'image_url': product.image_url,
+        'is_available': product.is_available
+    } for product in products]
+
+    return jsonify(products_list), 200
 
 @product_bp.route('/products/<int:product_id>', methods=['DELETE'])
 @token_required
