@@ -39,6 +39,8 @@ from routes.auth import auth_bp
 app.register_blueprint(auth_bp, url_prefix='/api') # All routes in auth_bp will be prefixed with /api
 from routes.farmer import farmer_bp
 app.register_blueprint(farmer_bp, url_prefix='/api') # All routes in farmer_bp will be prefixed with /api
+from routes.product import product_bp
+app.register_blueprint(product_bp, url_prefix='/api') # All routes in product_bp will be prefixed with /api
 
 # ============ ROUTES (API ENDPOINTS) ============
 
