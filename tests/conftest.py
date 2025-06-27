@@ -107,3 +107,34 @@ def farmer_auth_data(client, user_auth_headers):
         'headers': user_auth_headers,
         'farmer_id': farmer_data['id']
     }
+
+@pytest.fixture(scope='function')
+def second_farmer_auth_data(client, init_database):
+    """
+    Fixture to create a second, distinct user with a farmer profile.
+    This is useful for testing ownership and authorization rules.
+    """
+    # Register a new user
+    client.post('/api/register',
+                data=json.dumps(dict(
+                    username='farmer_two',
+                    email='farmer_two@example.com',
+                    password='password123'
+                )),
+                content_type='application/json')
+
+    # Log in to get a token
+    login_res = client.post('/api/login',
+                            data=json.dumps(dict(
+                                username='farmer_two',
+                                password='password123'
+                            )),
+                            content_type='application/json')
+
+    headers = {'Authorization': f'Bearer {login_res.get_json()["token"]}'}
+
+    # Create a farmer profile for this second user
+    farmer_res = client.post('/api/farmers', headers=headers, data=json.dumps(dict(farm_name="Second Test Farm")), content_type='application/json')
+    farmer_data = farmer_res.get_json()['farmer']
+
+    return {'headers': headers, 'farmer_id': farmer_data['id']}
