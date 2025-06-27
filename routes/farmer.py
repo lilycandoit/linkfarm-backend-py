@@ -9,7 +9,7 @@ farmer_bp = Blueprint('farmer', __name__)
 
 @farmer_bp.route('/farmers', methods=['POST'])
 @token_required
-@role_required(['user', 'admin']) # A regular user can create their farmer profile, admin can create for others
+@role_required(['user', 'farmer', 'admin']) # Allow users, farmers, and admins to access this route
 def create_farmer_profile():
     """
     Creates a new farmer profile for the authenticated user.

@@ -60,14 +60,14 @@ def test_login_user_failure(client, init_database):
     assert response.status_code == 401
     assert response.get_json()['message'] == 'Invalid credentials.'
 
-def test_get_profile_success(client, auth_headers):
+def test_get_profile_success(client, user_auth_headers):
     """
     GIVEN a logged-in user
     WHEN the '/api/profile' endpoint is requested with a valid token
     THEN check that the user's profile is returned and the status code is 200
     """
     # Access protected route
-    response = client.get('/api/profile', headers=auth_headers)
+    response = client.get('/api/profile', headers=user_auth_headers)
 
     assert response.status_code == 200
     data = response.get_json()
