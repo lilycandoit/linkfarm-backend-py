@@ -39,7 +39,9 @@ def login_user():
     payload = {
         'sub': user.id,  # 'sub' (subject) is a standard claim for user ID
         'iat': datetime.now(timezone.utc),  # 'iat' (issued at) timestamp
-        'exp': datetime.now(timezone.utc) + timedelta(hours=24)  # 'exp' (expiration) timestamp
+        'exp': datetime.now(timezone.utc) + timedelta(hours=24),  # 'exp' (expiration) timestamp
+        'role': user.role, # Add role to the payload
+        'username': user.username # Add username to the payload
     }
 
     token = jwt.encode(

@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, g
 from extensions import db
-from models.product import Product
 from models.farmer import Farmer
+from models.user import User
+from models.product import Product
 from utils.decorators import token_required, role_required
 
 # Create a Blueprint for product routes
@@ -47,6 +48,47 @@ def create_product():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+
+@product_bp.route('/products', methods=['GET'])
+def list_all_products():
+    """
+    Public endpoint to retrieve a paginated list of all available products.
+    This will join with farmer data to provide necessary info for the frontend.
+    """
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search_term = request.args.get('search', None, type=str)
+    category = request.args.get('category', None, type=str)
+
+    # Query to join Product and Farmer, filtering for available products
+    query = db.session.query(Product).join(Farmer).filter(Product.is_available == True)
+
+    # Apply search filter if provided
+    if search_term:
+        # Search across product name, description, and farm name using case-insensitive like
+        search_ilike = f"%{search_term}%"
+        query = query.filter(db.or_(
+            Product.name.ilike(search_ilike),
+            Product.description.ilike(search_ilike),
+            Farmer.farm_name.ilike(search_ilike)
+        ))
+
+    # Apply category filter if provided
+    if category:
+        query = query.filter(Product.category.ilike(f"%{category}%"))
+
+    # Add sorting, e.g., by newest
+    query = query.order_by(Product.created_at.desc())
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    products = pagination.items
+
+    return jsonify({
+        'products': [product.to_dict(include_farmer=True) for product in products],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    }), 200
 
 @product_bp.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):

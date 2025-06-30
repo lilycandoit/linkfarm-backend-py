@@ -31,6 +31,24 @@ class Product(db.Model):
         """
         return f'<Product {self.name} (Farmer ID: {self.farmer_id})>'
 
+    def to_dict(self, include_farmer=False):
+        """Serializes the Product object to a dictionary."""
+        data = {
+            'id': self.id,
+            'farmer_id': self.farmer_id,
+            'name': self.name,
+            'description': self.description,
+            'price': str(self.price), # Keep as string to avoid float precision issues
+            'unit': self.unit,
+            'category': self.category,
+            'image_url': self.image_url,
+            'is_available': self.is_available
+        }
+        if include_farmer and self.farmer:
+            # This uses the farmer's to_dict method, creating a nested object
+            data['farmer'] = self.farmer.to_dict()
+        return data
+
     def to_dict(self):
         """Serializes the Product object to a dictionary."""
         return {
