@@ -1,9 +1,10 @@
-from flask import Blueprint, request, jsonify, current_app, g
-from extensions import db
+from flask import Blueprint, request, jsonify, current_app
+from extensions import db, ma
 from models.user import User
 import jwt
 from datetime import datetime, timedelta, timezone
-from utils.decorators import token_required
+from schemas.user_schema import UserRegisterSchema
+from marshmallow import ValidationError
 
 # Create a Blueprint for authentication routes
 # The name 'auth' is used internally by Flask for routing and URL generation.
@@ -40,8 +41,8 @@ def login_user():
         'sub': user.id,  # 'sub' (subject) is a standard claim for user ID
         'iat': datetime.now(timezone.utc),  # 'iat' (issued at) timestamp
         'exp': datetime.now(timezone.utc) + timedelta(hours=24),  # 'exp' (expiration) timestamp
-        'role': user.role, # Add role to the payload
-        'username': user.username # Add username to the payload
+        'role': user.role, # Add role to the payload for the frontend
+        'username': user.username # Add username to the payload for the frontend
     }
 
     token = jwt.encode(
@@ -55,24 +56,6 @@ def login_user():
         'token': token
     }), 200
 
-@auth_bp.route('/profile', methods=['GET'])
-@token_required
-def get_profile():
-    """
-    A protected route that returns the current user's profile.
-    The user is identified by the JWT provided in the Authorization header.
-    """
-    # The `token_required` decorator has already verified the token
-    # and placed the user object in g.current_user.
-    current_user = g.current_user
-
-    return jsonify({
-        'id': current_user.id,
-        'username': current_user.username,
-        'email': current_user.email,
-        'role': current_user.role
-    }), 200
-
 # User Registration endpoint
 @auth_bp.route('/register', methods=['POST'])
 def register_user():
@@ -83,23 +66,27 @@ def register_user():
     """
     data = request.get_json()
 
-    # --- Validation ---
-    if not data or not all(key in data for key in ['username', 'email', 'password']):
-        return jsonify({
-            'error': 'Bad Request',
-            'message': 'Missing data. Required fields are: username, email, password.'
-        }), 400
+    if not data:
+        return jsonify({"error": "Bad Request", "message": "No input data provided"}), 400
 
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
+    schema = UserRegisterSchema()
+
+    # --- Validation ---
+    try:
+        # Validate the incoming data against the rules in our schema.
+        validated_data = schema.load(data)
+    except ValidationError as err:
+        # If validation fails, return a 400 error with detailed messages.
+        return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
+
+    username = validated_data['username']
+    email = validated_data['email']
+    password = validated_data['password']
 
     # Check if user already exists
-    # Use modern SQLAlchemy 2.0 syntax for querying
     if db.session.execute(db.select(User).filter_by(username=username)).scalar_one_or_none():
         return jsonify({'error': 'Conflict', 'message': 'Username already exists.'}), 409
 
-    # Use modern SQLAlchemy 2.0 syntax for querying
     if db.session.execute(db.select(User).filter_by(email=email)).scalar_one_or_none():
         return jsonify({'error': 'Conflict', 'message': 'Email already registered.'}), 409
 

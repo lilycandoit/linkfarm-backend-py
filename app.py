@@ -10,7 +10,7 @@ from datetime import datetime
 from config import config
 
 # Import extensions
-from extensions import db
+from extensions import db, ma
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,6 +25,7 @@ app.config.from_object(config[env])
 
 # Initialize extensions with our Flask app
 db.init_app(app)
+ma.init_app(app)
 
 # Import models so SQLAlchemy knows about them
 # This must be done AFTER db is initialized, but before blueprints are registered
