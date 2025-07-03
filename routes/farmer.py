@@ -1,156 +1,102 @@
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify
 from extensions import db
 from models.farmer import Farmer
-from models.user import User # Needed for relationship access
-from utils.decorators import token_required, role_required
+from models.user import User
+from schemas.farmer_schema import FarmerSchema
+from marshmallow import ValidationError
+from decorators import jwt_required
 
 # Create a Blueprint for farmer routes
 farmer_bp = Blueprint('farmer', __name__)
+farmer_schema = FarmerSchema()
+farmers_schema = FarmerSchema(many=True)
 
-@farmer_bp.route('/farmers', methods=['GET'])
+@farmer_bp.route('', methods=['GET'])
 def list_farmers():
     """
     Public endpoint to retrieve a paginated list of all farmers.
-    Crucial for the main discovery page of the frontend.
     """
-    # Simple pagination using query parameters (e.g., /farmers?page=1&per_page=10)
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-
-    # Use the paginate() method for easy pagination
-    pagination = db.session.query(Farmer).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = Farmer.query.paginate(page=page, per_page=per_page, error_out=False)
     farmers = pagination.items
 
     return jsonify({
-        'farmers': [farmer.to_dict() for farmer in farmers],
+        'farmers': farmers_schema.dump(farmers),
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page
     }), 200
 
-@farmer_bp.route('/farmers', methods=['POST'])
-@token_required
-@role_required(['user', 'farmer', 'admin']) # Allow users, farmers, and admins to access this route
-def create_farmer_profile():
+@farmer_bp.route('', methods=['POST'])
+@jwt_required
+def create_farmer_profile(current_user):
     """
     Creates a new farmer profile for the authenticated user.
     A user can only have one farmer profile.
     """
-    data = request.get_json()
-
-    if not data or not data.get('farm_name'):
-        return jsonify({'error': 'Bad Request', 'message': 'Farm name is required.'}), 400
-
-    # Check if the current user already has a farmer profile
-    if g.current_user.farmer:
+    if current_user.farmer_profile:
         return jsonify({'error': 'Conflict', 'message': 'User already has a farmer profile.'}), 409
 
+    data = request.get_json()
     try:
-        new_farmer = Farmer(
-            user_id=g.current_user.id,
-            farm_name=data['farm_name'],
-            first_name=data.get('first_name'),
-            last_name=data.get('last_name'),
-            location=data.get('location'),
-            phone=data.get('phone'),
-            description=data.get('description'),
-            profile_image_url=data.get('profile_image_url')
-        )
-        # Add the new farmer profile to the session
+        # Validate incoming data using the schema
+        loaded_data = farmer_schema.load(data)
+        new_farmer = Farmer(user_id=current_user.id, **loaded_data)
         db.session.add(new_farmer)
 
-        # --- Crucial Logic Fix ---
-        # Promote the user's role to 'farmer' upon successful profile creation.
-        g.current_user.role = 'farmer'
-        db.session.commit()
+        # Promote the user's role to 'farmer' if they are currently a 'user'
+        if current_user.role == 'user':
+            current_user.role = 'farmer'
 
-        return jsonify({
-            'message': 'Farmer profile created successfully!',
-            'farmer': {
-                'id': new_farmer.id,
-                'user_id': new_farmer.user_id,
-                'farm_name': new_farmer.farm_name,
-                'location': new_farmer.location,
-                'created_at': new_farmer.created_at.isoformat()
-            }
-        }), 201
+        db.session.commit()
+        return jsonify(farmer_schema.dump(new_farmer)), 201
+    except ValidationError as err:
+        return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
 
-@farmer_bp.route('/farmers/<int:farmer_id>', methods=['GET'])
-@token_required # Anyone with a valid token can view a farmer profile
-def get_farmer_profile(farmer_id):
+@farmer_bp.route('/<int:farmer_id>', methods=['GET'])
+def get_farmer_by_id(farmer_id):
     """
-    Retrieves a specific farmer profile by ID.
-    """
-    farmer = db.session.get(Farmer, farmer_id)
-    if not farmer:
-        return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
-
-    # Return the farmer's profile AND their list of products in one call
-    return jsonify(farmer.to_dict(include_products=True)), 200
-
-@farmer_bp.route('/farmers/<int:farmer_id>', methods=['PUT'])
-@token_required
-@role_required(['farmer', 'admin']) # Only the farmer themselves or an admin can update
-def update_farmer_profile(farmer_id):
-    """
-    Updates an existing farmer profile.
-    Only the associated user (if they are a farmer) or an admin can update.
+    Publicly retrieves a specific farmer profile by ID, including their products.
     """
     farmer = db.session.get(Farmer, farmer_id)
     if not farmer:
         return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
+    return jsonify(farmer_schema.dump(farmer, include_products=True)), 200
 
-    # Authorization check: User must own the profile OR be an admin
-    if g.current_user.id != farmer.user_id and not g.current_user.is_admin:
-        return jsonify({'error': 'Forbidden', 'message': 'You are not authorized to update this profile.'}), 403
+@farmer_bp.route('/me', methods=['GET'])
+@jwt_required
+def get_my_farmer_profile(current_user):
+    """
+    Retrieves the profile for the currently authenticated user.
+    This is the endpoint your dashboard calls.
+    """
+    farmer = db.session.execute(db.select(Farmer).filter_by(user_id=current_user.id)).scalar_one_or_none()
+    if not farmer:
+        return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found for this user.'}), 404
+    return jsonify(farmer_schema.dump(farmer)), 200
+
+@farmer_bp.route('/me', methods=['PUT'])
+@jwt_required
+def update_my_farmer_profile(current_user):
+    """Updates the profile for the currently authenticated user."""
+    farmer = db.session.execute(db.select(Farmer).filter_by(user_id=current_user.id)).scalar_one_or_none()
+    if not farmer:
+        return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
 
     data = request.get_json()
-    if not data:
-        return jsonify({'error': 'Bad Request', 'message': 'No data provided for update.'}), 400
-
     try:
-        for key, value in data.items():
-            if hasattr(farmer, key) and key not in ['id', 'user_id', 'created_at', 'updated_at']:
-                setattr(farmer, key, value)
-
+        # Use the schema to validate and load the data for update
+        loaded_data = farmer_schema.load(data, partial=True)
+        for key, value in loaded_data.items():
+            setattr(farmer, key, value)
         db.session.commit()
-
-        return jsonify({
-            'message': 'Farmer profile updated successfully!',
-            'farmer': {
-                'id': farmer.id,
-                'farm_name': farmer.farm_name,
-                'location': farmer.location,
-                'updated_at': farmer.updated_at.isoformat()
-            }
-        }), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
-
-@farmer_bp.route('/farmers/<int:farmer_id>', methods=['DELETE'])
-@token_required
-@role_required(['farmer', 'admin']) # Only the farmer themselves or an admin can delete
-def delete_farmer_profile(farmer_id):
-    """
-    Deletes a farmer profile.
-    Only the associated user (if they are a farmer) or an admin can delete.
-    """
-    farmer = db.session.get(Farmer, farmer_id)
-    if not farmer:
-        return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
-
-    # Authorization check: User must own the profile OR be an admin
-    if g.current_user.id != farmer.user_id and not g.current_user.is_admin:
-        return jsonify({'error': 'Forbidden', 'message': 'You are not authorized to delete this profile.'}), 403
-
-    try:
-        db.session.delete(farmer)
-        db.session.commit()
-        return jsonify({'message': 'Farmer profile deleted successfully!'}), 200
+        return jsonify(farmer_schema.dump(farmer)), 200
+    except ValidationError as err:
+        return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500

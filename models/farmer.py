@@ -10,15 +10,13 @@ class Farmer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # One-to-one relationship with User: each user can have one farmer profile.
     # unique=True ensures this one-to-one constraint.
-    # ondelete='CASCADE' means if the associated user is deleted, this farmer profile is also deleted.
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), unique=True, nullable=False)
 
-    farm_name = db.Column(db.String(255), nullable=False)
-    first_name = db.Column(db.String(100))
-    last_name = db.Column(db.String(100))
+    name = db.Column(db.String(150), nullable=False)
+    farm_name = db.Column(db.String(150), nullable=False)
     location = db.Column(db.Text)
     phone = db.Column(db.String(20))
-    description = db.Column(db.Text)
+    bio = db.Column(db.Text)
     profile_image_url = db.Column(db.Text)
 
     # Timestamps for creation and last update

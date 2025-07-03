@@ -33,13 +33,13 @@ from models.user import User
 
 # Configure CORS (Cross-Origin Resource Sharing)
 # Uses the CORS_ORIGINS from our config
-CORS(app, origins=app.config['CORS_ORIGINS'])
+CORS(app, origins=["http://localhost:5173"], supports_credentials=True)
 
 # Import and register Blueprints
 from routes.auth import auth_bp
 app.register_blueprint(auth_bp, url_prefix='/api') # All routes in auth_bp will be prefixed with /api
 from routes.farmer import farmer_bp
-app.register_blueprint(farmer_bp, url_prefix='/api') # All routes in farmer_bp will be prefixed with /api
+app.register_blueprint(farmer_bp, url_prefix='/api/farmers') # All routes in farmer_bp will be prefixed with /api/farmers
 from routes.product import product_bp
 app.register_blueprint(product_bp, url_prefix='/api') # All routes in product_bp will be prefixed with /api
 from routes.dashboard import dashboard_bp

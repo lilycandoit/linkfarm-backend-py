@@ -27,12 +27,9 @@ class Config:
     # Enable/disable debug mode based on environment
     DEBUG = os.getenv('FLASK_ENV') == 'development'
 
-    # CORS settings - which frontend URLs can access this API
-    CORS_ORIGINS = [
-        os.getenv('FRONTEND_URL', 'http://localhost:3000'),
-        'http://localhost:3000',  # React default
-        'http://127.0.0.1:3000',  # Alternative localhost
-    ]
+    # CORS settings - Get the allowed origin from the environment variable.
+    # This makes the configuration cleaner and avoids hardcoded values.
+    CORS_ORIGINS = [os.getenv('FRONTEND_URL', 'http://localhost:5173')]
 
 class DevelopmentConfig(Config):
     """

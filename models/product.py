@@ -8,7 +8,6 @@ class Product(db.Model):
     __tablename__ = 'products'
 
     id = db.Column(db.Integer, primary_key=True)
-    # Foreign key to the farmers table, if a farmer is deleted, their products are also deleted.
     farmer_id = db.Column(db.Integer, db.ForeignKey('farmers.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(255), nullable=False)
@@ -32,7 +31,10 @@ class Product(db.Model):
         return f'<Product {self.name} (Farmer ID: {self.farmer_id})>'
 
     def to_dict(self, include_farmer=False):
-        """Serializes the Product object to a dictionary."""
+        """
+        Serializes the Product object to a dictionary.
+        Optionally includes the related farmer's information.
+        """
         data = {
             'id': self.id,
             'farmer_id': self.farmer_id,
@@ -45,8 +47,8 @@ class Product(db.Model):
             'is_available': self.is_available
         }
         if include_farmer and self.farmer:
-            # This uses the farmer's to_dict method, creating a nested object
-            data['farmer'] = self.farmer.to_dict()
+            # Exclude the farmer's own products to prevent circular recursion
+            data['farmer'] = self.farmer.to_dict(include_products=False)
         return data
 
     def to_dict(self):
