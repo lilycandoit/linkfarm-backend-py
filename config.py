@@ -1,63 +1,63 @@
-# config.py - Database configuration and settings
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-# This must be called before accessing os.getenv()
+# Load environment variables from the .env file.
+# This makes it easy to manage configuration for different environments.
 load_dotenv()
 
 class Config:
     """
-    Base configuration class
-    Contains all the settings for our Flask application
+    Base configuration class. Contains default settings and settings
+    loaded from environment variables that are common to all environments.
     """
+    # --- Critical Application Secrets ---
+    # These are loaded from the .env file. The application will not start
+    # if these are not set, which is a crucial security measure.
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    JWT_SECRET_KEY = os.getenv('SECRET_KEY') # flask-jwt-extended uses this
 
-    # Database connection string
-    # Gets the DATABASE_URL from environment variables
-    # Format: postgresql://username:password@host:port/database
+    # --- Database Configuration ---
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
-
-    # Disable SQLAlchemy event system (saves memory)
-    # Flask-SQLAlchemy recommendation for better performance
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Secret key for session security (from environment variables)
-    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
+    # --- CORS Configuration ---
+    CORS_ORIGINS = os.getenv('FRONTEND_URL')
 
-    # Enable/disable debug mode based on environment
-    DEBUG = os.getenv('FLASK_ENV') == 'development'
-
-    # CORS settings - Get the allowed origin from the environment variable.
-    # This makes the configuration cleaner and avoids hardcoded values.
-    CORS_ORIGINS = [os.getenv('FRONTEND_URL', 'http://localhost:5173')]
+    def __init__(self):
+        """
+        Validates that essential environment variables are loaded.
+        The application will refuse to start if they are missing.
+        """
+        if not self.SECRET_KEY or not self.SQLALCHEMY_DATABASE_URI or not self.CORS_ORIGINS:
+            raise ValueError("One or more required environment variables (SECRET_KEY, DATABASE_URL, FRONTEND_URL) are not set in your .env file.")
 
 class DevelopmentConfig(Config):
     """
-    Development environment configuration
-    Inherits from base Config class
+    Configuration for the development environment.
+    Enables debug mode and other development-friendly features.
     """
+    ENV = 'development'
     DEBUG = True
-    SQLALCHEMY_ECHO = True  # Print all SQL queries (helpful for learning!)
+    # Print all executed SQL queries to the console for easy debugging.
+    SQLALCHEMY_ECHO = True
 
 class TestingConfig(Config):
     """
-    Testing environment configuration
+    Configuration for running automated tests.
     """
+    ENV = 'testing'
     TESTING = True
-    DEBUG = True
-    # Use an in-memory SQLite database for tests for speed and isolation
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SQLALCHEMY_ECHO = False # Keep test output clean
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:' # Use in-memory DB for tests
+    SECRET_KEY = 'test-secret-key' # Use a separate key for testing
+    JWT_SECRET_KEY = 'test-secret-key'
 
 class ProductionConfig(Config):
-    """
-    Production environment configuration
-    More secure settings for deployment
-    """
+    """Configuration for the live production environment."""
+    ENV = 'production'
     DEBUG = False
-    SQLALCHEMY_ECHO = False  # Don't print SQL queries in production
+    SQLALCHEMY_ECHO = False
 
-# Dictionary to easily switch between configurations
+# A dictionary to easily switch between configurations in the app factory.
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,

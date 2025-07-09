@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify, current_app
 from extensions import db, ma
+from sqlalchemy import or_
 from models.user import User
-import jwt
-from datetime import datetime, timedelta, timezone
 from schemas.user_schema import UserRegisterSchema
+from flask_jwt_extended import create_access_token
 from marshmallow import ValidationError
 
 # Create a Blueprint for authentication routes
@@ -25,31 +25,26 @@ def login_user():
             'message': 'Missing username or password.'
         }), 400
 
-    username = data.get('username')
+    login_identifier = data.get('username')
     password = data.get('password')
 
-    # Use modern SQLAlchemy 2.0 syntax for querying
-    user = db.session.execute(db.select(User).filter_by(username=username)).scalar_one_or_none()
+    # Use modern SQLAlchemy 2.0 syntax to find the user by either username or email.
+    user = db.session.execute(
+        db.select(User).where(
+            or_(User.username == login_identifier, User.email == login_identifier)
+        )
+    ).scalar_one_or_none()
 
     # Use a generic error message to avoid leaking information about whether a username exists
     if not user or not user.check_password(password):
         return jsonify({'error': 'Unauthorized', 'message': 'Invalid credentials.'}), 401
 
-    # --- Create JWT ---
-    # The token payload contains the user's ID and expiration information.
-    payload = {
-        'sub': user.id,  # 'sub' (subject) is a standard claim for user ID
-        'iat': datetime.now(timezone.utc),  # 'iat' (issued at) timestamp
-        'exp': datetime.now(timezone.utc) + timedelta(hours=24),  # 'exp' (expiration) timestamp
-        'role': user.role, # Add role to the payload for the frontend
-        'username': user.username # Add username to the payload for the frontend
-    }
-
-    token = jwt.encode(
-        payload,
-        current_app.config['SECRET_KEY'],
-        algorithm='HS256'
-    )
+    # --- Create JWT using flask-jwt-extended ---
+    # The `identity` is stored in the 'sub' claim of the token.
+    # We can add custom data to the token using the `additional_claims` parameter.
+    # The library handles expiration ('exp') and issued at ('iat') automatically.
+    additional_claims = {"role": user.role, "username": user.username}
+    token = create_access_token(identity=user.id, additional_claims=additional_claims)
 
     return jsonify({
         'message': 'Login successful!',
@@ -83,11 +78,15 @@ def register_user():
     email = validated_data['email']
     password = validated_data['password']
 
-    # Check if user already exists
-    if db.session.execute(db.select(User).filter_by(username=username)).scalar_one_or_none():
-        return jsonify({'error': 'Conflict', 'message': 'Username already exists.'}), 409
+    # Check if username or email already exists in a single, efficient query.
+    existing_user = db.session.execute(
+        db.select(User).where(or_(User.username == username, User.email == email))
+    ).scalar_one_or_none()
 
-    if db.session.execute(db.select(User).filter_by(email=email)).scalar_one_or_none():
+    if existing_user:
+        if existing_user.username == username:
+            return jsonify({'error': 'Conflict', 'message': 'Username already exists.'}), 409
+        # Since we know the user exists, if the username doesn't match, the email must.
         return jsonify({'error': 'Conflict', 'message': 'Email already registered.'}), 409
 
     # --- Create and save new user ---

@@ -1,16 +1,16 @@
 from extensions import db
-from datetime import datetime
+from datetime import datetime, timezone
+from .base_model import BaseModel
 
-class Farmer(db.Model):
+class Farmer(BaseModel):
     """
     Represents a farmer's profile in the database, linked to a User.
     """
     __tablename__ = 'farmers'
 
-    id = db.Column(db.Integer, primary_key=True)
     # One-to-one relationship with User: each user can have one farmer profile.
     # unique=True ensures this one-to-one constraint.
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), unique=True, nullable=False)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id', ondelete='CASCADE'), unique=True, nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
     farm_name = db.Column(db.String(150), nullable=False)
@@ -19,14 +19,13 @@ class Farmer(db.Model):
     bio = db.Column(db.Text)
     profile_image_url = db.Column(db.Text)
 
-    # Timestamps for creation and last update
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    # onupdate=datetime.utcnow ensures this field is updated every time the record is modified
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Relationship to User model (one-to-one)
+    user = db.relationship('User', back_populates='farmer_profile', uselist=False)
 
     # Relationships to Products and Inquiries (one-to-many)
-    products = db.relationship('Product', backref='farmer', lazy=True, cascade='all, delete-orphan')
-    inquiries = db.relationship('Inquiry', backref='farmer', lazy=True, cascade='all, delete-orphan')
+    products = db.relationship('Product', back_populates='farmer', lazy=True, cascade='all, delete-orphan')
+
+    inquiries = db.relationship('Inquiry', back_populates='farmer', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):
         """
@@ -42,12 +41,11 @@ class Farmer(db.Model):
         data = {
             'id': self.id,
             'user_id': self.user_id,
+            'name': self.name,
             'farm_name': self.farm_name,
-            'first_name': self.first_name,
-            'last_name': self.last_name,
             'location': self.location,
             'phone': self.phone,
-            'description': self.description,
+            'bio': self.bio,
             'profile_image_url': self.profile_image_url,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()

@@ -1,14 +1,13 @@
 from extensions import db
-from datetime import datetime
+from .base_model import BaseModel
 
-class Product(db.Model):
+class Product(BaseModel):
     """
     Represents a product offered by a farmer.
     """
     __tablename__ = 'products'
 
-    id = db.Column(db.Integer, primary_key=True)
-    farmer_id = db.Column(db.Integer, db.ForeignKey('farmers.id', ondelete='CASCADE'), nullable=False)
+    farmer_id = db.Column(db.String(36), db.ForeignKey('farmers.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
@@ -18,11 +17,11 @@ class Product(db.Model):
     image_url = db.Column(db.Text)
     is_available = db.Column(db.Boolean, default=True)
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Relationship to Farmer model (one-to-many)
+    farmer = db.relationship('Farmer', back_populates='products')
 
-    # Relationship to Inquiries (one-to-many)
-    inquiries = db.relationship('Inquiry', backref='product', lazy=True, cascade='all, delete-orphan')
+    # Relationship to Inquiries
+    inquiries = db.relationship('Inquiry', back_populates='product', lazy=True, cascade='all, delete-orphan')
 
     def __repr__(self):
         """
@@ -30,49 +29,18 @@ class Product(db.Model):
         """
         return f'<Product {self.name} (Farmer ID: {self.farmer_id})>'
 
-    def to_dict(self, include_farmer=False):
+    def to_dict(self, include_farmer=False, include_inquiries=False):
         """
         Serializes the Product object to a dictionary.
-        Optionally includes the related farmer's information.
+        - Optionally includes the related farmer's information.
+        - Optionally includes the list of inquiries for this product.
         """
         data = {
             'id': self.id,
             'farmer_id': self.farmer_id,
             'name': self.name,
             'description': self.description,
-            'price': str(self.price), # Keep as string to avoid float precision issues
-            'unit': self.unit,
-            'category': self.category,
-            'image_url': self.image_url,
-            'is_available': self.is_available
-        }
-        if include_farmer and self.farmer:
-            # Exclude the farmer's own products to prevent circular recursion
-            data['farmer'] = self.farmer.to_dict(include_products=False)
-        return data
-
-    def to_dict(self):
-        """Serializes the Product object to a dictionary."""
-        return {
-            'id': self.id,
-            'farmer_id': self.farmer_id,
-            'name': self.name,
-            'description': self.description,
-            'price': str(self.price), # Keep as string to avoid float precision issues
-            'unit': self.unit,
-            'category': self.category,
-            'image_url': self.image_url,
-            'is_available': self.is_available
-        }
-
-    def to_dict(self):
-        """Serializes the Product object to a dictionary."""
-        return {
-            'id': self.id,
-            'farmer_id': self.farmer_id,
-            'name': self.name,
-            'description': self.description,
-            'price': str(self.price), # Keep as string to avoid float precision issues
+            'price': str(self.price),  # Keep as string to avoid float precision issues
             'unit': self.unit,
             'category': self.category,
             'image_url': self.image_url,
@@ -80,3 +48,10 @@ class Product(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
+        if include_farmer and self.farmer:
+            # Exclude the farmer's own products to prevent circular recursion
+            data['farmer'] = self.farmer.to_dict(include_products=False)
+        if include_inquiries:
+            # Assuming Inquiry model has a to_dict method
+            data['inquiries'] = [inquiry.to_dict() for inquiry in self.inquiries]
+        return data

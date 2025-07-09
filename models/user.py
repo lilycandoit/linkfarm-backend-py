@@ -1,24 +1,22 @@
 from extensions import db
-from datetime import datetime
+from .base_model import BaseModel
 from werkzeug.security import generate_password_hash, check_password_hash
 
-class User(db.Model):
+class User(BaseModel):
     """
     Represents a user in the database.
     """
     __tablename__ = 'users'
 
-    id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     # Increased length for future-proofing with different hashing algorithms
     password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     role = db.Column(db.String(20), nullable=False, default='user') # Roles: user, farmer, admin
 
     # One-to-one relationship with Farmer
     # uselist=False indicates a one-to-one relationship
-    farmer = db.relationship('Farmer', backref='user', uselist=False, cascade='all, delete-orphan')
+    farmer_profile = db.relationship('Farmer', back_populates='user', uselist=False, cascade='all, delete-orphan')
 
     def __repr__(self):
         """

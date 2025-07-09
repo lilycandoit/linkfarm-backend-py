@@ -1,17 +1,17 @@
 from extensions import db
 from datetime import datetime
+from .base_model import BaseModel
 
-class Inquiry(db.Model):
+class Inquiry(BaseModel):
     """
     Represents a customer inquiry about a product or farmer.
     """
     __tablename__ = 'inquiries'
 
-    id = db.Column(db.Integer, primary_key=True)
     # Foreign key to the farmers table. If a farmer is deleted, their inquiries are also deleted.
-    farmer_id = db.Column(db.Integer, db.ForeignKey('farmers.id', ondelete='CASCADE'), nullable=False)
+    farmer_id = db.Column(db.String(36), db.ForeignKey('farmers.id', ondelete='CASCADE'), nullable=False)
     # Foreign key to the products table. If a product is deleted, this field is set to NULL.
-    product_id = db.Column(db.Integer, db.ForeignKey('products.id', ondelete='SET NULL'), nullable=True)
+    product_id = db.Column(db.String(36), db.ForeignKey('products.id', ondelete='SET NULL'), nullable=True)
 
     customer_name = db.Column(db.String(255), nullable=False)
     customer_email = db.Column(db.String(255), nullable=False)
@@ -19,7 +19,11 @@ class Inquiry(db.Model):
     message = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default='new') # e.g., 'new', 'read', 'responded', 'archived'
 
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    # relationship with other models
+    farmer = db.relationship('Farmer', back_populates='inquiries')
+
+    product = db.relationship('Product', back_populates='inquiries')
+
 
     def __repr__(self):
         """
