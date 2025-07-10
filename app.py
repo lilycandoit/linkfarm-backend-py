@@ -22,28 +22,21 @@ def create_app(config_name=None):
     # or 'development' if that's not set.
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'development')
-    print(f"--- [1/7] Loading config: {config_name} ---")
     app.config.from_object(config[config_name])
-    print("--- [2/7] Config loaded successfully ---")
 
     # --- 2. Initialize Extensions ---
     # Bind the extensions to the Flask app instance.
-    print("--- [3/7] Initializing extensions... ---")
     db.init_app(app)
     ma.init_app(app)
     jwt.init_app(app)
-    print("--- [4/7] Extensions initialized successfully ---")
 
     # --- 3. Configure CORS ---
     # This allows your frontend (running on a different port) to make
     # requests to the backend API.
-    print("--- [5/7] Configuring CORS... ---")
     CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
-    print("--- [6/7] CORS configured successfully ---")
 
     # --- 4. Register Blueprints ---
     # Blueprints are used to organize routes into separate modules.
-    print("--- [7/7] Registering blueprints... ---")
     from routes.main import main_bp
     from routes.auth import auth_bp
     from routes.farmer import farmer_bp
@@ -61,7 +54,6 @@ def create_app(config_name=None):
     if app.config['DEBUG']:
         from routes.dev import dev_bp
         app.register_blueprint(dev_bp, url_prefix='/api')
-    print("--- Blueprints registered successfully ---")
 
     # --- 5. Register Error Handlers ---
     # This provides consistent JSON error responses instead of default HTML pages.
@@ -79,7 +71,6 @@ def create_app(config_name=None):
             'message': 'An unexpected error occurred on the server.'
         }), 500
 
-    print("--- App creation complete. Returning app instance. ---")
     return app
 
 if __name__ == '__main__':
