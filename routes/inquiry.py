@@ -1,3 +1,18 @@
+"""
+Inquiry Routes - Customer-Farmer Communication
+
+This module handles customer inquiries about products and farmers.
+This is a CORE FEATURE of our connection platform model.
+
+Inquiry Status Workflow:
+1. 'new' - Customer just submitted (default)
+2. 'read' - Farmer has viewed the inquiry
+3. 'responded' - Farmer has responded to customer
+4. 'archived' - Conversation is complete
+
+All inquiries are linked to a farmer (required) and optionally to a product.
+"""
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from extensions import db

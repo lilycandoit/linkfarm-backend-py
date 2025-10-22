@@ -1,3 +1,15 @@
+"""
+Configuration Module for LinkFarm API
+
+Defines configuration classes for different environments:
+- DevelopmentConfig: Local development with debug enabled
+- TestingConfig: Automated testing with in-memory database
+- ProductionConfig: Live production environment with security hardened
+
+All configs require environment variables to be set in .env file.
+See README.md for required environment variables.
+"""
+
 import os
 from dotenv import load_dotenv
 
@@ -44,18 +56,29 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """
     Configuration for running automated tests.
+
+    Uses in-memory SQLite database for fast, isolated testing.
+    Test database is created fresh for each test run and destroyed after.
     """
     ENV = 'testing'
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:' # Use in-memory DB for tests
-    SECRET_KEY = 'test-secret-key' # Use a separate key for testing
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:' # In-memory DB - fast and isolated
+    SECRET_KEY = 'test-secret-key' # Hardcoded for testing - safe since not in production
     JWT_SECRET_KEY = 'test-secret-key'
+    CORS_ORIGINS = 'http://localhost:5173'  # Allow CORS in tests
 
 class ProductionConfig(Config):
-    """Configuration for the live production environment."""
+    """
+    Configuration for the live production environment.
+
+    Security features:
+    - DEBUG disabled (never enable in production!)
+    - SQL query logging disabled for performance
+    - Requires environment variables to be set
+    """
     ENV = 'production'
-    DEBUG = False
-    SQLALCHEMY_ECHO = False
+    DEBUG = False  # CRITICAL: Never set to True in production
+    SQLALCHEMY_ECHO = False  # Disable SQL logging for performance and security
 
 # A dictionary to easily switch between configurations in the app factory.
 config = {

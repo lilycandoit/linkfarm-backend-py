@@ -17,6 +17,13 @@ class UserRegisterSchema(ma.Schema):
     # Also add a validator for the username.
     username = fields.Str(required=True, validate=validate.Length(min=3, max=80))
 
+    # Role field with validation - only allow 'farmer' or 'user', defaults to 'farmer'
+    role = fields.Str(
+        required=False,
+        validate=validate.OneOf(['farmer', 'user'], error="Role must be either 'farmer' or 'user'."),
+        load_default='farmer'
+    )
+
     class Meta:
         # This tells Marshmallow to ignore any extra fields sent in the request.
         unknown = "EXCLUDE"

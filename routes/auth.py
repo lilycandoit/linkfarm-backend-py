@@ -77,6 +77,7 @@ def register_user():
     username = validated_data['username']
     email = validated_data['email']
     password = validated_data['password']
+    role = validated_data.get('role', 'farmer')  # Default to 'farmer' if not provided
 
     # Check if username or email already exists in a single, efficient query.
     existing_user = db.session.execute(
@@ -90,7 +91,7 @@ def register_user():
         return jsonify({'error': 'Conflict', 'message': 'Email already registered.'}), 409
 
     # --- Create and save new user ---
-    new_user = User(username=username, email=email)
+    new_user = User(username=username, email=email, role=role)
     new_user.set_password(password) # Securely hash the password
 
     db.session.add(new_user)
