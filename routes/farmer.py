@@ -1,11 +1,12 @@
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from extensions import db
 from models.farmer import Farmer
 from models.user import User
 from schemas.farmer_schema import FarmerSchema
+from schemas.product_schema import products_schema
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 # Create a Blueprint for farmer routes
 farmer_bp = Blueprint('farmer', __name__)
@@ -49,16 +50,12 @@ def create_farmer_profile():
     if user.farmer_profile:
         return jsonify({'error': 'Conflict', 'message': 'User already has a farmer profile.'}), 409
 
-    data = request.get_fjson()
+    data = request.get_json()
     try:
         # Validate and deserialize the incoming data directly into a Farmer object
         # because `load_instance=True` is set in the schema.
         new_farmer = farmer_schema.load(data, session=db.session)
-
-        # Associate the new profile with the logged-in user
         new_farmer.user_id = user.id
-
-        # Add the new instance to the session
         db.session.add(new_farmer)
 
         # Promote the user's role to 'farmer' if they are currently a 'user'
@@ -79,7 +76,7 @@ def get_farmer_by_id(farmer_id):
     Publicly retrieves a specific farmer profile by ID, including their products.
     The route parameter must be a string to accommodate UUIDs.
     """
-    farmer = db.session.get(Farmer, farmer_id) # .get() is the most efficient way to query by primary key
+    farmer = db.session.get(Farmer, farmer_id)
     if not farmer:
         return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
     # The schema controls which nested fields are included.
@@ -110,14 +107,34 @@ def update_my_farmer_profile():
     data = request.get_json()
     try:
         # Use the schema to validate and load the data for update.
-        # `partial=True` allows for updating only a subset of fields.
-        loaded_data = farmer_schema.load(data, partial=True)
-        for key, value in loaded_data.items():
-            setattr(farmer, key, value)
+        # - `instance=farmer` tells Marshmallow to load data into this object.
+        # - `partial=True` allows for updating only a subset of fields.
+        farmer_schema.load(data, instance=farmer, partial=True, session=db.session)
+
         db.session.commit()
         return jsonify(farmer_schema.dump(farmer)), 200
     except ValidationError as err:
+        # This block was missing, causing the IndentationError.
+        # It now correctly returns a 400 Bad Request with validation messages.
         return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+
+@farmer_bp.route('/me/products', methods=['GET'])
+@jwt_required()
+def get_my_products():
+    """
+    Retrieves a list of all products for the currently authenticated farmer.
+    This is the endpoint our new ProductManagement component will call.
+    """
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+
+    # Ensure the user has a farmer profile before trying to fetch products.
+    if not user or not user.farmer_profile:
+        return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found for this user.'}), 404
+
+    # Use the 'products' relationship on the Farmer model to get all associated products.
+    products = user.farmer_profile.products
+    return jsonify(products_schema.dump(products)), 200

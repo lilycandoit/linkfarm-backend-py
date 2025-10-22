@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
 
 """
 This file centralizes the creation of Flask extension instances.
@@ -10,3 +11,4 @@ blueprints and models without causing circular import errors.
 db = SQLAlchemy()
 ma = Marshmallow()
 jwt = JWTManager()
+migrate = Migrate()  # Database migration manager using Alembic

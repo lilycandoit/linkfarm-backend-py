@@ -7,9 +7,9 @@ class FarmerSchema(ma.SQLAlchemyAutoSchema):
     It automatically generates fields from the Farmer model, ensuring consistency.
     """
     # Use marshmallow's nested fields to include related data when requested.
-    # By using a string "ProductSchema", we allow Marshmallow to find the class
-    # later, avoiding the circular import error at startup.
-    products = ma.Nested("ProductSchema", many=True, dump_only=True)
+    # When dumping a farmer, we want their products, but we must exclude the
+    # back-reference to the farmer from each product to prevent an infinite loop.
+    products = ma.Nested("ProductSchema", many=True, dump_only=True, exclude=("farmer",))
 
     class Meta:
         model = Farmer

@@ -1,3 +1,14 @@
+"""
+DEPRECATED: This file contains custom authentication decorators that are NO LONGER USED.
+
+All routes have been migrated to use flask-jwt-extended instead:
+- Use @jwt_required() instead of @token_required
+- Use get_jwt() and check role manually instead of @role_required(['farmer'])
+
+This file is kept for reference only and will be removed in a future cleanup.
+Last migration: 2025-10-22
+"""
+
 from functools import wraps
 from flask import request, jsonify, g, current_app
 import jwt

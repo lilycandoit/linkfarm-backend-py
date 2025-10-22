@@ -5,8 +5,9 @@ class ProductSchema(ma.SQLAlchemyAutoSchema):
     """
     Schema for serializing and validating Product data.
     """
-    # Use a string "FarmerSchema" to avoid circular import issues at startup.
-    farmer = ma.Nested("FarmerSchema", dump_only=True)
+    # When dumping a product, we want the farmer's info,
+    # but we must exclude the farmer's own product list to prevent an infinite loop.
+    farmer = ma.Nested("FarmerSchema", dump_only=True, exclude=("products",))
 
     class Meta:
         model = Product

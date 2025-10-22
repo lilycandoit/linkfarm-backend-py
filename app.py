@@ -1,10 +1,10 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 
 from config import config
-from extensions import db, ma, jwt
+from extensions import db, ma, jwt, migrate
 
 # Load environment variables from .env file
 # It's good practice to call this at the top of your entry file.
@@ -29,6 +29,11 @@ def create_app(config_name=None):
     db.init_app(app)
     ma.init_app(app)
     jwt.init_app(app)
+    migrate.init_app(app, db)  # Initialize Flask-Migrate with app and db
+
+    # Import models so Flask-Migrate can detect them for migrations
+    # This must be done after db.init_app() to avoid circular imports
+    from models import User, Farmer, Product, Inquiry
 
     # --- 3. Configure CORS ---
     # This allows your frontend (running on a different port) to make
@@ -42,6 +47,7 @@ def create_app(config_name=None):
     from routes.farmer import farmer_bp
     from routes.product import product_bp
     from routes.inquiry import inquiry_bp
+    from routes.upload import upload_bp
 
     # All blueprints are registered under the /api prefix
     app.register_blueprint(main_bp, url_prefix='/api')
@@ -49,13 +55,29 @@ def create_app(config_name=None):
     app.register_blueprint(farmer_bp, url_prefix='/api/farmers')
     app.register_blueprint(product_bp, url_prefix='/api/products')
     app.register_blueprint(inquiry_bp, url_prefix='/api/inquiries')
+    app.register_blueprint(upload_bp, url_prefix='/api/upload')
 
     # Conditionally register the development blueprint
     if app.config['DEBUG']:
         from routes.dev import dev_bp
         app.register_blueprint(dev_bp, url_prefix='/api')
 
-    # --- 5. Register Error Handlers ---
+    # --- 5. Serve Uploaded Files as Static Content ---
+    # This route allows the frontend to access uploaded images
+    # Example: http://localhost:5000/uploads/product-images/image.jpg
+    @app.route('/uploads/<path:subpath>/<filename>')
+    def serve_upload(subpath, filename):
+        """
+        Serve uploaded files (e.g., product images).
+
+        Security Note: In production, it's better to serve static files
+        through a proper web server (Nginx, Apache) or CDN for better performance.
+        This is acceptable for development and small deployments.
+        """
+        uploads_dir = os.path.join(app.root_path, 'uploads', subpath)
+        return send_from_directory(uploads_dir, filename)
+
+    # --- 6. Register Error Handlers ---
     # This provides consistent JSON error responses instead of default HTML pages.
     @app.errorhandler(404)
     def not_found(_error):
