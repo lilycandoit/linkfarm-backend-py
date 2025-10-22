@@ -20,3 +20,4 @@ flask-marshmallow==1.3.0
 marshmallow==4.0.0
 marshmallow-sqlalchemy==1.4.2
 Flask-Migrate==4.0.5
+google-generativeai==0.8.3
