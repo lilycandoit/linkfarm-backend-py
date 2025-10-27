@@ -66,7 +66,21 @@ def create_app(config_name=None):
         from routes.dev import dev_bp
         app.register_blueprint(dev_bp, url_prefix='/api')
 
-    # --- 5. Serve Uploaded Files as Static Content ---
+    # --- 5. Root-level Health Check for AWS Elastic Beanstalk ---
+    # EB health checks hit "/" by default, so we provide a simple endpoint here
+    @app.route('/')
+    def root_health_check():
+        """
+        Simple health check endpoint for AWS Elastic Beanstalk.
+        Returns 200 OK if the application is running.
+        """
+        return jsonify({
+            'status': 'healthy',
+            'message': 'LinkFarm API is running',
+            'api_docs': '/api'
+        }), 200
+
+    # --- 6. Serve Uploaded Files as Static Content ---
     # This route allows the frontend to access uploaded images
     # Example: http://localhost:5000/uploads/product-images/image.jpg
     @app.route('/uploads/<path:subpath>/<filename>')
@@ -81,7 +95,7 @@ def create_app(config_name=None):
         uploads_dir = os.path.join(app.root_path, 'uploads', subpath)
         return send_from_directory(uploads_dir, filename)
 
-    # --- 6. Register Error Handlers ---
+    # --- 7. Register Error Handlers ---
     # This provides consistent JSON error responses instead of default HTML pages.
     @app.errorhandler(404)
     def not_found(_error):

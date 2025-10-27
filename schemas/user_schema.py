@@ -1,6 +1,6 @@
 from extensions import ma
 from models.user import User
-from marshmallow import fields, validate
+from marshmallow import fields, validate, EXCLUDE
 
 class UserRegisterSchema(ma.Schema):
     """
@@ -26,7 +26,7 @@ class UserRegisterSchema(ma.Schema):
 
     class Meta:
         # This tells Marshmallow to ignore any extra fields sent in the request.
-        unknown = "EXCLUDE"
+        unknown = EXCLUDE
 
 class UserSchema(ma.SQLAlchemyAutoSchema):
     """
