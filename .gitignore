@@ -26,3 +26,9 @@ instance/
 
 # Uploaded files
 uploads/
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+full_logs.txt
+*.backup
