@@ -23,6 +23,7 @@ marshmallow-sqlalchemy==0.29.0
 # Utilities
 python-dotenv==1.0.1
 PyJWT==2.8.0
+supabase==2.9.0
 
 # Production WSGI Server
 gunicorn==21.2.0

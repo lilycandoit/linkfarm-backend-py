@@ -29,7 +29,11 @@ class Config:
     JWT_SECRET_KEY = os.getenv('SECRET_KEY') # flask-jwt-extended uses this
 
     # --- Database Configuration ---
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    # Ensure compatibility with modern SQLAlchemy which prefers 'postgresql://'
+    db_url = os.getenv('DATABASE_URL', '')
+    if db_url.startswith('postgres://'):
+        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # --- CORS Configuration ---
