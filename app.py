@@ -38,7 +38,14 @@ def create_app(config_name=None):
     # --- 3. Configure CORS ---
     # This allows your frontend (running on a different port) to make
     # requests to the backend API.
-    CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
+    CORS(
+        app,
+        origins=app.config['CORS_ORIGINS'],
+        supports_credentials=True,
+        allow_headers=['Content-Type', 'Authorization'],
+        expose_headers=['Content-Type', 'Authorization'],
+        methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+    )
 
     # --- 4. Register Blueprints ---
     # Blueprints are used to organize routes into separate modules.

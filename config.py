@@ -37,7 +37,10 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # --- CORS Configuration ---
-    CORS_ORIGINS = os.getenv('FRONTEND_URL')
+    # Convert FRONTEND_URL to a list for Flask-CORS
+    # Supports multiple origins separated by commas
+    frontend_url = os.getenv('FRONTEND_URL', '')
+    CORS_ORIGINS = [url.strip() for url in frontend_url.split(',') if url.strip()]
 
     def __init__(self):
         """
