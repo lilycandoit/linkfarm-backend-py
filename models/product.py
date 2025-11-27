@@ -14,6 +14,7 @@ class Product(BaseModel):
     price = db.Column(db.Numeric(10, 2), nullable=False) # DECIMAL(10,2)
     unit = db.Column(db.String(50), default='lb')
     category = db.Column(db.String(100))
+    stock_quantity = db.Column(db.Integer, default=0)  # Track inventory
     image_url = db.Column(db.Text)
     is_available = db.Column(db.Boolean, default=True)
 
@@ -43,6 +44,7 @@ class Product(BaseModel):
             'price': str(self.price),  # Keep as string to avoid float precision issues
             'unit': self.unit,
             'category': self.category,
+            'stock_quantity': self.stock_quantity,
             'image_url': self.image_url,
             'is_available': self.is_available,
             'created_at': self.created_at.isoformat(),
