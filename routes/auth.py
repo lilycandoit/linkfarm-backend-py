@@ -3,7 +3,7 @@ from extensions import db, ma
 from sqlalchemy import or_
 from models.user import User
 from schemas.user_schema import UserRegisterSchema
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from marshmallow import ValidationError
 
 # Create a Blueprint for authentication routes
@@ -106,3 +106,24 @@ def register_user():
             'email': new_user.email
         }
     }), 201
+
+@auth_bp.route('/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """
+    Returns the authenticated user's profile information.
+    Requires a valid JWT token in the Authorization header.
+    """
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+
+    if not user:
+        return jsonify({'error': 'Not Found', 'message': 'User not found.'}), 404
+
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'role': user.role,
+        'created_at': user.created_at.isoformat()
+    }), 200

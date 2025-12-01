@@ -166,6 +166,9 @@ pytest
 # Run with verbose output
 pytest -v
 
+# Run in verbose mode with short tracebacks
+pytest -v --tb=line
+
 # Run specific test file
 pytest tests/test_auth.py
 

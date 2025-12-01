@@ -14,8 +14,11 @@ def test_create_farmer_profile_success(client, user_auth_headers):
     response = client.post('/api/farmers',
                            headers=user_auth_headers,
                            data=json.dumps(dict(
+                               name="John Doe",
                                farm_name="Sunny Meadow Farm",
-                               location="Green Valley"
+                               location="Green Valley",
+                               phone="555-1234",
+                               bio="A sunny farm in the valley"
                            )),
                            content_type='application/json')
 
@@ -80,15 +83,15 @@ def test_update_farmer_profile_as_owner(client, farmer_auth_data):
 
     response = client.put(f'/api/farmers/{farmer_id}',
                           headers=headers,
-                          data=json.dumps(dict(description="Updated description")),
+                          data=json.dumps(dict(bio="Updated bio")),
                           content_type='application/json')
 
     assert response.status_code == 200
-    assert response.get_json()['message'] == 'Farmer profile updated successfully!'
-
+    data = response.get_json()
+    assert data['message'] == 'Farmer profile updated successfully!'
     # Verify the change in the database
     farmer = db.session.get(Farmer, farmer_id)
-    assert farmer.description == "Updated description"
+    assert farmer.bio == "Updated bio"
 
 def test_update_farmer_profile_as_admin(client, admin_auth_headers, farmer_auth_data):
     """

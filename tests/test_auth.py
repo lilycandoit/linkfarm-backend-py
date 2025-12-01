@@ -83,4 +83,5 @@ def test_get_profile_failure_no_token(client, init_database):
     response = client.get('/api/profile')
 
     assert response.status_code == 401
-    assert response.get_json()['message'] == 'Token is missing!'
+    # Flask-JWT-Extended returns 'msg' key, not 'message'
+    assert response.get_json()['msg'] == 'Missing Authorization Header'

@@ -63,7 +63,10 @@ def create_farmer_profile():
             user.role = 'farmer'
 
         db.session.commit()
-        return jsonify(farmer_schema.dump(new_farmer)), 201
+        return jsonify({
+            'message': 'Farmer profile created successfully!',
+            'farmer': farmer_schema.dump(new_farmer)
+        }), 201
     except ValidationError as err:
         return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
     except Exception as e:
@@ -81,6 +84,18 @@ def get_farmer_by_id(farmer_id):
         return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
     # The schema controls which nested fields are included.
     return jsonify(farmer_schema.dump(farmer)), 200
+
+@farmer_bp.route('/<string:farmer_id>/products', methods=['GET'])
+def get_farmer_products(farmer_id):
+    """
+    Publicly retrieves a list of products for a specific farmer.
+    """
+    farmer = db.session.get(Farmer, farmer_id)
+    if not farmer:
+        return jsonify({'error': 'Not Found', 'message': 'Farmer not found.'}), 404
+
+    # Use the 'products' relationship to get all associated products.
+    return jsonify(products_schema.dump(farmer.products)), 200
 
 @farmer_bp.route('/me', methods=['GET'])
 @jwt_required()
@@ -138,3 +153,40 @@ def get_my_products():
     # Use the 'products' relationship on the Farmer model to get all associated products.
     products = user.farmer_profile.products
     return jsonify(products_schema.dump(products)), 200
+
+@farmer_bp.route('/<string:farmer_id>', methods=['PUT'])
+@jwt_required()
+def update_farmer_profile(farmer_id):
+    """
+    Updates a specific farmer profile.
+    Authorization: Owner of the profile or admin can update.
+    """
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+
+    if not user:
+        return jsonify({'error': 'Not Found', 'message': 'Authenticated user not found.'}), 404
+
+    farmer = db.session.get(Farmer, farmer_id)
+    if not farmer:
+        return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
+
+    # Check authorization: must be the owner or an admin
+    if farmer.user_id != user_id and user.role != 'admin':
+        return jsonify({'error': 'Forbidden', 'message': 'You do not have the necessary permissions to access this resource.'}), 403
+
+    data = request.get_json()
+    try:
+        # Use the schema to validate and load the data for update.
+        farmer_schema.load(data, instance=farmer, partial=True, session=db.session)
+
+        db.session.commit()
+        return jsonify({
+            'message': 'Farmer profile updated successfully!',
+            'farmer': farmer_schema.dump(farmer)
+        }), 200
+    except ValidationError as err:
+        return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500

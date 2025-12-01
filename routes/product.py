@@ -36,7 +36,10 @@ def create_product():
         db.session.commit()
 
         # Return the serialized new product data
-        return jsonify(product_schema.dump(new_product)), 201
+        return jsonify({
+            'message': 'Product created successfully!',
+            'product': product_schema.dump(new_product)
+        }), 201
     except ValidationError as err:
         return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
     except Exception as e:

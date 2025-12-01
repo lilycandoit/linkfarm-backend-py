@@ -1,5 +1,5 @@
 import pytest
-from app import app as flask_app
+from app import create_app
 from extensions import db
 import json
 from models.user import User
@@ -11,7 +11,7 @@ def app():
     Creates a test Flask application instance for the entire test module.
     """
     # Use the 'testing' configuration
-    flask_app.config.from_object('config.TestingConfig')
+    flask_app = create_app('testing')
 
     with flask_app.app_context():
         yield flask_app
@@ -96,8 +96,11 @@ def farmer_auth_data(client, user_auth_headers):
     farmer_res = client.post('/api/farmers',
                              headers=user_auth_headers,
                              data=json.dumps(dict(
+                                 name="Test Farmer",
                                  farm_name="Test Farm",
-                                 location="Test Location"
+                                 location="Test Location",
+                                 phone="555-0100",
+                                 bio="Test farmer bio"
                              )),
                              content_type='application/json')
 
@@ -130,7 +133,16 @@ def second_farmer_auth_data(client, init_database):
     headers = {'Authorization': f'Bearer {login_res.get_json()["token"]}'}
 
     # Create a farmer profile for this second user
-    farmer_res = client.post('/api/farmers', headers=headers, data=json.dumps(dict(farm_name="Second Test Farm")), content_type='application/json')
+    farmer_res = client.post('/api/farmers',
+                             headers=headers,
+                             data=json.dumps(dict(
+                                 name="Second Farmer",
+                                 farm_name="Second Test Farm",
+                                 location="Second Location",
+                                 phone="555-0200",
+                                 bio="Second test farmer bio"
+                             )),
+                             content_type='application/json')
     farmer_data = farmer_res.get_json()['farmer']
 
     return {'headers': headers, 'farmer_id': farmer_data['id']}
