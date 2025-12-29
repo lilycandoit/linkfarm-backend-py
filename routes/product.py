@@ -49,17 +49,26 @@ def create_product():
 @product_bp.route('', methods=['GET'])
 def list_all_products():
     """
-    Public endpoint to retrieve a paginated list of all available products.
+    Public endpoint to retrieve a paginated list of products with advanced filtering.
+    Supports: search, categories, locations, price range, and sorting.
     """
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    search_term = request.args.get('search', None, type=str)
-    category = request.args.get('category', None, type=str)
 
-    # Use modern SQLAlchemy 2.0 select statement
+    # Filtering parameters
+    search_term = request.args.get('search', None, type=str)
+    categories = request.args.getlist('category') # Supports multiple categories
+    locations = request.args.getlist('location')   # Supports multiple locations
+    min_price = request.args.get('min_price', type=float)
+    max_price = request.args.get('max_price', type=float)
+
+    # Sorting parameter
+    sort_by = request.args.get('sort_by', 'newest', type=str)
+
+    # Base query
     select_query = db.select(Product).join(Farmer).filter(Product.is_available == True)
 
-    # Apply search filter if provided
+    # 1. Improved Search Filter
     if search_term:
         search_ilike = f"%{search_term}%"
         select_query = select_query.filter(db.or_(
@@ -68,12 +77,32 @@ def list_all_products():
             Farmer.farm_name.ilike(search_ilike)
         ))
 
-    if category:
-        select_query = select_query.filter(Product.category.ilike(f"%{category}%"))
+    # 2. Multi-Category Filter
+    if categories:
+        select_query = select_query.filter(Product.category.in_(categories))
 
-    select_query = select_query.order_by(Product.created_at.desc())
+    # 3. Multi-Location Filter (Filtering by Farmer location)
+    if locations:
+        select_query = select_query.filter(Farmer.location.in_(locations))
 
-    # Use the modern db.paginate for pagination
+    # 4. Price range filters
+    if min_price is not None:
+        select_query = select_query.filter(Product.price >= min_price)
+    if max_price is not None:
+        select_query = select_query.filter(Product.price <= max_price)
+
+    # 5. Sorting Logic
+    if sort_by == 'price-low':
+        select_query = select_query.order_by(Product.price.asc())
+    elif sort_by == 'price-high':
+        select_query = select_query.order_by(Product.price.desc())
+    elif sort_by == 'name':
+        select_query = select_query.order_by(Product.name.asc())
+    else:
+        # Default: newest first
+        select_query = select_query.order_by(Product.created_at.desc())
+
+    # Execute paginated query
     pagination = db.paginate(select_query, page=page, per_page=per_page, error_out=False)
     products = pagination.items
 
