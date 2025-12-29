@@ -382,4 +382,3 @@ GitHub: [@lilycandoit](https://github.com/lilycandoit)
 ---
 
 **Live Demo:** [LinkFarm on Vercel](https://link-farm-gules.vercel.app)
-**Backend API:** [Koyeb Deployment](https://grotesque-editha-liduong-474fc8d4.koyeb.app)

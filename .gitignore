@@ -35,3 +35,4 @@ uploads/
 !.elasticbeanstalk/*.global.yml
 full_logs.txt
 *.backup
+.vercel

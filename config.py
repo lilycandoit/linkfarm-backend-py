@@ -36,6 +36,16 @@ class Config:
     SQLALCHEMY_DATABASE_URI = db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # --- Serverless Database Connection Pooling ---
+    # Critical for Vercel serverless functions to avoid "too many connections"
+    # Each serverless function invocation is short-lived, so we use minimal pooling
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 1,           # Minimum connections per function instance
+        "max_overflow": 0,        # No overflow connections (stay within limits)
+        "pool_pre_ping": True,    # Verify connection is alive before using
+        "pool_recycle": 300,      # Recycle connections after 5 minutes
+    }
+
     # --- CORS Configuration ---
     # Convert FRONTEND_URL to a list for Flask-CORS
     # Supports multiple origins separated by commas

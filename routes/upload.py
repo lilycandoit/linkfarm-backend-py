@@ -52,47 +52,70 @@ def upload_product_image():
 
     # Note: File size validation is still good practice but less critical
     # as Supabase has its own limits.
-    
+
     current_user_id = get_jwt_identity()
+
+    # Try Supabase first, fallback to local if keys are missing
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_KEY")
 
     try:
         file_ext = file.filename.rsplit('.', 1)[1].lower()
-        
-        # Generate a unique path/filename for the object in Supabase Storage
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         unique_filename = f"{current_user_id}_{timestamp}_{uuid.uuid4().hex[:8]}.{file_ext}"
         safe_filename = secure_filename(unique_filename)
-        
-        # Read file content into memory to upload
-        file_content = file.read()
 
-        # Get Supabase client
-        supabase = get_supabase_client()
+        if supabase_url and supabase_key:
+            # --- Supabase Upload Path ---
+            # Read file content into memory to upload
+            file_content = file.read()
+            supabase = create_client(supabase_url, supabase_key)
 
-        # Upload to Supabase Storage
-        res = supabase.storage.from_(BUCKET_NAME).upload(
-            path=safe_filename,
-            file=file_content,
-            file_options={"content-type": file.mimetype}
-        )
+            res = supabase.storage.from_(BUCKET_NAME).upload(
+                path=safe_filename,
+                file=file_content,
+                file_options={"content-type": file.mimetype}
+            )
 
-        # Check for upload errors
-        if res.status_code != 200:
-            current_app.logger.error(f"Supabase upload failed: {res.text}")
-            return jsonify({'error': 'Internal Server Error', 'message': 'Failed to upload image to storage.'}), 500
+            if not (hasattr(res, 'status_code') and res.status_code in [200, 201]):
+                error_msg = res.text if hasattr(res, 'text') else "Unknown storage error"
+                current_app.logger.error(f"Supabase upload failed: {error_msg}")
+                return jsonify({'error': 'Internal Server Error', 'message': 'Failed to upload image to storage.'}), 500
 
-        # Get the public URL for the newly uploaded file
-        public_url_res = supabase.storage.from_(BUCKET_NAME).get_public_url(safe_filename)
-        
+            public_url_res = supabase.storage.from_(BUCKET_NAME).get_public_url(safe_filename)
+
+            # Support various SDK versions for get_public_url return types
+            image_url = public_url_res
+            if isinstance(public_url_res, dict) and 'publicUrl' in public_url_res:
+                image_url = public_url_res['publicUrl']
+            elif hasattr(public_url_res, 'public_url'):
+                image_url = getattr(public_url_res, 'public_url')
+        else:
+            # --- Local Fallback Path ---
+            # Create local directory if it doesn't exist
+            local_dir = os.path.join(current_app.root_path, 'uploads', 'product-images')
+            os.makedirs(local_dir, exist_ok=True)
+
+            file_path = os.path.join(local_dir, safe_filename)
+            file.save(file_path)
+
+            # Construct local URL
+            image_url = f"{request.host_url.rstrip('/')}/uploads/product-images/{safe_filename}"
+            current_app.logger.info(f"Local upload success: {image_url}")
+
         return jsonify({
             'message': 'Image uploaded successfully',
-            'imageUrl': public_url_res,
-            'filename': safe_filename
+            'imageUrl': image_url,
+            'filename': safe_filename,
+            'storage': 'supabase' if (supabase_url and supabase_key) else 'local'
         }), 201
 
     except Exception as e:
-        current_app.logger.error(f'Error uploading file to Supabase: {str(e)}')
-        return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred.'}), 500
+        current_app.logger.error(f'Error uploading file: {str(e)}')
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': f'Upload failed: {str(e)}'
+        }), 500
 
 
 @upload_bp.route('/delete-image', methods=['DELETE'])
