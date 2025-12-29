@@ -67,6 +67,7 @@ def upload_product_image():
 
         if supabase_url and supabase_key:
             # --- Supabase Upload Path ---
+            current_app.logger.info("Using Supabase for image upload")
             # Read file content into memory to upload
             file_content = file.read()
             supabase = create_client(supabase_url, supabase_key)
