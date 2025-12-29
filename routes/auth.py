@@ -112,7 +112,7 @@ def register_user():
 def get_profile():
     """
     Returns the authenticated user's profile information.
-    Requires a valid JWT token in the Authorization header.
+    Includes farmer profile details if applicable.
     """
     user_id = get_jwt_identity()
     user = db.session.get(User, user_id)
@@ -120,10 +120,65 @@ def get_profile():
     if not user:
         return jsonify({'error': 'Not Found', 'message': 'User not found.'}), 404
 
-    return jsonify({
+    profile_data = {
         'id': user.id,
         'username': user.username,
         'email': user.email,
         'role': user.role,
         'created_at': user.created_at.isoformat()
-    }), 200
+    }
+
+    if user.farmer_profile:
+        profile_data['farmer_id'] = user.farmer_profile.id
+        profile_data['farm_name'] = user.farmer_profile.farm_name
+        profile_data['profile_image_url'] = user.farmer_profile.profile_image_url
+
+    return jsonify(profile_data), 200
+
+@auth_bp.route('/settings', methods=['PUT'])
+@jwt_required()
+def update_settings():
+    """
+    Updates user account settings: email and password.
+    Requires current password for validation.
+    """
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+
+    if not user:
+        return jsonify({'error': 'Not Found', 'message': 'User not found.'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Bad Request', 'message': 'No data provided.'}), 400
+
+    current_password = data.get('current_password')
+    if not current_password:
+        return jsonify({'error': 'Bad Request', 'message': 'Current password is required.'}), 400
+
+    if not user.check_password(current_password):
+        return jsonify({'error': 'Unauthorized', 'message': 'Incorrect current password.'}), 401
+
+    # Update email if provided
+    new_email = data.get('email')
+    if new_email and new_email != user.email:
+        existing_email = db.session.execute(
+            db.select(User).where(User.email == new_email)
+        ).scalar_one_or_none()
+        if existing_email:
+            return jsonify({'error': 'Conflict', 'message': 'Email is already in use.'}), 409
+        user.email = new_email
+
+    # Update password if provided
+    new_password = data.get('new_password')
+    if new_password:
+        if len(new_password) < 8:
+            return jsonify({'error': 'Bad Request', 'message': 'New password too short.'}), 400
+        user.set_password(new_password)
+
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Settings updated successfully.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500

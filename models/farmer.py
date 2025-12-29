@@ -18,6 +18,7 @@ class Farmer(BaseModel):
     phone = db.Column(db.String(20))
     bio = db.Column(db.Text)
     profile_image_url = db.Column(db.Text)
+    messenger_handle = db.Column(db.String(100))
 
     # Relationship to User model (one-to-one)
     user = db.relationship('User', back_populates='farmer_profile', uselist=False)
@@ -47,6 +48,7 @@ class Farmer(BaseModel):
             'phone': self.phone,
             'bio': self.bio,
             'profile_image_url': self.profile_image_url,
+            'messenger_handle': self.messenger_handle,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }

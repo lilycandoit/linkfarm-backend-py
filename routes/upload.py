@@ -35,27 +35,28 @@ def allowed_file(filename):
 @upload_bp.route('/product-image', methods=['POST'])
 @jwt_required()
 def upload_product_image():
+    return handle_upload("product-images")
+
+@upload_bp.route('/avatar', methods=['POST'])
+@jwt_required()
+def upload_avatar():
+    return handle_upload("avatars")
+
+def handle_upload(bucket_name):
     """
-    Uploads a product image to Supabase Storage and returns the public URL.
-    This is a protected endpoint requiring a JWT token.
+    Helper function to handle file uploads to a specific bucket or local directory.
     """
     if 'file' not in request.files:
-        return jsonify({'error': 'Bad Request', 'message': 'No file part in the request'}), 400
+        return jsonify({'error': 'Bad Request', 'message': 'No file part'}), 400
 
     file = request.files['file']
-
     if file.filename == '':
-        return jsonify({'error': 'Bad Request', 'message': 'No file selected'}), 400
+        return jsonify({'error': 'Bad Request', 'message': 'No selected file'}), 400
 
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Bad Request', 'message': f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
-
-    # Note: File size validation is still good practice but less critical
-    # as Supabase has its own limits.
+        return jsonify({'error': 'Bad Request', 'message': 'Invalid file type'}), 400
 
     current_user_id = get_jwt_identity()
-
-    # Try Supabase first, fallback to local if keys are missing
     supabase_url = os.environ.get("SUPABASE_URL")
     supabase_key = os.environ.get("SUPABASE_KEY")
 
@@ -66,57 +67,41 @@ def upload_product_image():
         safe_filename = secure_filename(unique_filename)
 
         if supabase_url and supabase_key:
-            # --- Supabase Upload Path ---
-            current_app.logger.info("Using Supabase for image upload")
-            # Read file content into memory to upload
             file_content = file.read()
             supabase = create_client(supabase_url, supabase_key)
-
-            res = supabase.storage.from_(BUCKET_NAME).upload(
+            # Ensure bucket exists (optional, could just assume)
+            res = supabase.storage.from_(bucket_name).upload(
                 path=safe_filename,
                 file=file_content,
                 file_options={"content-type": file.mimetype}
             )
 
             if not (hasattr(res, 'status_code') and res.status_code in [200, 201]):
-                error_msg = res.text if hasattr(res, 'text') else "Unknown storage error"
-                current_app.logger.error(f"Supabase upload failed: {error_msg}")
-                return jsonify({'error': 'Internal Server Error', 'message': 'Failed to upload image to storage.'}), 500
+                # Fallback to creating bucket if it might not exist (minimal error handling)
+                return jsonify({'error': 'Internal Server Error', 'message': 'Storage upload failed.'}), 500
 
-            public_url_res = supabase.storage.from_(BUCKET_NAME).get_public_url(safe_filename)
-
-            # Support various SDK versions for get_public_url return types
+            public_url_res = supabase.storage.from_(bucket_name).get_public_url(safe_filename)
             image_url = public_url_res
             if isinstance(public_url_res, dict) and 'publicUrl' in public_url_res:
                 image_url = public_url_res['publicUrl']
             elif hasattr(public_url_res, 'public_url'):
                 image_url = getattr(public_url_res, 'public_url')
         else:
-            # --- Local Fallback Path ---
-            # Create local directory if it doesn't exist
-            local_dir = os.path.join(current_app.root_path, 'uploads', 'product-images')
+            local_dir = os.path.join(current_app.root_path, 'uploads', bucket_name)
             os.makedirs(local_dir, exist_ok=True)
-
             file_path = os.path.join(local_dir, safe_filename)
             file.save(file_path)
-
-            # Construct local URL
-            image_url = f"{request.host_url.rstrip('/')}/uploads/product-images/{safe_filename}"
-            current_app.logger.info(f"Local upload success: {image_url}")
+            image_url = f"{request.host_url.rstrip('/')}/uploads/{bucket_name}/{safe_filename}"
 
         return jsonify({
-            'message': 'Image uploaded successfully',
+            'message': 'Upload successful',
             'imageUrl': image_url,
-            'filename': safe_filename,
-            'storage': 'supabase' if (supabase_url and supabase_key) else 'local'
+            'filename': safe_filename
         }), 201
 
     except Exception as e:
-        current_app.logger.error(f'Error uploading file: {str(e)}')
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': f'Upload failed: {str(e)}'
-        }), 500
+        current_app.logger.error(f'Upload error: {str(e)}')
+        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
 
 
 @upload_bp.route('/delete-image', methods=['DELETE'])

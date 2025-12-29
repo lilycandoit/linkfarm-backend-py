@@ -29,7 +29,7 @@ def create_inquiry():
     Creates a new customer inquiry. This is a public endpoint.
     """
     data = request.get_json()
-    required_fields = ['farmer_id', 'customer_name', 'customer_email', 'message']
+    required_fields = ['farmer_id', 'customer_name', 'customer_email', 'customer_phone', 'message']
     if not data or not all(key in data for key in required_fields):
         return jsonify({'error': 'Bad Request', 'message': 'Missing required fields.'}), 400
 
