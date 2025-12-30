@@ -1,10 +1,16 @@
 import os
+# Force eventlet to use 'selects' hub to avoid kqueue issues on macOS
+os.environ['EVENTLET_HUB'] = 'selects'
+
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 
 from config import config
-from extensions import db, ma, jwt, migrate
+from extensions import db, ma, jwt, migrate, socketio
 
 # Load environment variables from .env file
 # It's good practice to call this at the top of your entry file.
@@ -30,6 +36,7 @@ def create_app(config_name=None):
     ma.init_app(app)
     jwt.init_app(app)
     migrate.init_app(app, db)  # Initialize Flask-Migrate with app and db
+    socketio.init_app(app)     # Initialize real-time WebSocket support
 
     # Import models so Flask-Migrate can detect them for migrations
     # This must be done after db.init_app() to avoid circular imports
@@ -67,6 +74,10 @@ def create_app(config_name=None):
     app.register_blueprint(upload_bp, url_prefix='/api/upload')
     app.register_blueprint(dashboard_bp, url_prefix='/api')
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
+
+    # --- Register WebSocket handlers ---
+    # This must be imported after socketio is initialized
+    import routes.websockets
 
     # Conditionally register the development blueprint
     if app.config['DEBUG']:
@@ -131,7 +142,7 @@ if __name__ == '__main__':
         print(f"🌍 Environment: {app.config['ENV']}")
         print(f"🔧 Debug mode: {app.config['DEBUG']}")
         print(f"🔗 API running at: http://localhost:{port}/")
-        app.run(host='0.0.0.0', port=port)
+        socketio.run(app, host='0.0.0.0', port=port, debug=app.config['DEBUG'])
     except Exception as e:
         # This will catch any error during app creation and print it.
         print("❌ An error occurred during application startup:")

@@ -15,7 +15,7 @@ All inquiries are linked to a farmer (required) and optionally to a product.
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from extensions import db
+from extensions import db, socketio
 from models.inquiry import Inquiry
 from models.farmer import Farmer
 from models.user import User
@@ -37,6 +37,12 @@ def create_inquiry():
     if not db.session.get(Farmer, data['farmer_id']):
         return jsonify({'error': 'Not Found', 'message': 'Farmer not found.'}), 404
 
+    # Basic phone number validation (digits, spaces, +, -)
+    import re
+    phone_pattern = re.compile(r'^[\d\s\+\-\(\)]{5,20}$')
+    if data.get('customer_phone') and not phone_pattern.match(data['customer_phone']):
+        return jsonify({'error': 'Bad Request', 'message': 'Invalid phone number format.'}), 400
+
     try:
         new_inquiry = Inquiry(
             farmer_id=data['farmer_id'],
@@ -48,6 +54,15 @@ def create_inquiry():
         )
         db.session.add(new_inquiry)
         db.session.commit()
+
+        # Emit a WebSocket event to the farmer's private room
+        room = f"farmer_{data['farmer_id']}"
+        socketio.emit('new_inquiry', {
+            'message': f"New inquiry from {data['customer_name']}",
+            'customer_name': data['customer_name'],
+            'inquiry_id': new_inquiry.id
+        }, room=room)
+        print(f"📡 [SOCKET] EMITTED new_inquiry TO ROOM: {room}")
 
         return jsonify({'message': 'Inquiry submitted successfully!'}), 201
     except Exception as e:
