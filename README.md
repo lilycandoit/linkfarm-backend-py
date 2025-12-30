@@ -25,19 +25,21 @@ The project is a production‑ready MVP that demonstrates clean architecture and
     *   Inquiry tracking with ownership‑based authorization.
 *   **AI Assistance:** Integrated Google Gemini to auto‑generate persuasive product descriptions.
 *   **Internationalisation (i18n):** Multi‑language support structure (English/Vietnamese).
-*   **Cloud Storage:** File upload system backed by Supabase Storage.
+*   **Cloud Image Storage:** Cloudinary integration for optimized image delivery and CDN distribution.
 
 ---
 
 ## 🏗️ Technical Architecture & Quality
 *   **Backend:** Python/Flask following a modular Blueprint-based structure.
 *   **Database:** PostgreSQL (Supabase) managed with SQLAlchemy 2.0.
-*   **Migrations:** Robust schema version control using Alembic.
+*   **Migrations:** Robust schema version control using Alembic (Flask-Migrate).
 *   **Validation:** Strict schema enforcement via Marshmallow.
-*   **Real-time Features:** WebSocket integration (Flask-SocketIO) for instant inquiry notifications.
 *   **Analytics:** Comprehensive dashboard with inquiry tracking, product view metrics, and conversion analytics.
+*   **AI Integration:** Google Gemini for automated product description generation.
+*   **Image Optimization:** Frontend uploads directly to Cloudinary for automatic compression and CDN delivery.
 *   **Security:**
     *   Password hashing with `bcrypt`.
+    *   JWT-based authentication with Flask-JWT-Extended.
     *   Strict ownership checks on all write/update operations.
     *   Environment-driven configuration management.
 
@@ -46,11 +48,11 @@ The project is a production‑ready MVP that demonstrates clean architecture and
 ## 🚀 Future Roadmap: What's Next?
 To take LinkFarm to the next level of production readiness, I plan to focus on:
 
-1.  **Search & Filtering Polish**: Implement PostgreSQL full-text search and advanced category/location filtering. *(Completed)*
-2.  ✅ **Real-time Alerts**: Integrate **WebSockets (Flask-SocketIO)** for instant inquiry notifications on the farmer dashboard. *(Completed)*
-3.  **Advanced AI Integration**: Use Computer Vision (Gemini 2.0) to analyze product images and suggest optimal pricing/tags.
-4.  **Performance Optimization**: Implement Redis caching for high-traffic public listings and server-side image processing for optimized load times.
-5.  ✅ **Analytics Dashboard**: Provide farmers with simple charts tracking inquiry volume and product views over time. *(Completed)*
+1.  ✅ **Search & Filtering**: Advanced category/location filtering with multi-criteria search. *(Completed)*
+2.  ✅ **Image Optimization**: Cloudinary CDN integration for automatic compression and responsive delivery. *(Completed)*
+3.  **Advanced AI Integration**: Use Computer Vision (Gemini 2.0) to analyze product images and suggest optimal pricing/category tags.
+4.  **Email Notifications**: SendGrid integration for instant inquiry alerts to farmers via email.
+5.  ✅ **Analytics Dashboard**: Comprehensive charts tracking inquiry volume, product views, and engagement metrics. *(Completed)*
 
 ---
 

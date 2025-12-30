@@ -15,7 +15,7 @@ All inquiries are linked to a farmer (required) and optionally to a product.
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from extensions import db, socketio
+from extensions import db
 from models.inquiry import Inquiry
 from models.farmer import Farmer
 from models.user import User
@@ -54,15 +54,6 @@ def create_inquiry():
         )
         db.session.add(new_inquiry)
         db.session.commit()
-
-        # Emit a WebSocket event to the farmer's private room
-        room = f"farmer_{data['farmer_id']}"
-        socketio.emit('new_inquiry', {
-            'message': f"New inquiry from {data['customer_name']}",
-            'customer_name': data['customer_name'],
-            'inquiry_id': new_inquiry.id
-        }, room=room)
-        print(f"📡 [SOCKET] EMITTED new_inquiry TO ROOM: {room}")
 
         return jsonify({'message': 'Inquiry submitted successfully!'}), 201
     except Exception as e:

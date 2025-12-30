@@ -99,6 +99,43 @@ def list_all_products():
         }
     }), 200
 
+@product_bp.route('', methods=['POST'])
+@jwt_required()
+def create_product():
+    """
+    Creates a new product for the authenticated farmer.
+    Only farmers can create products.
+    """
+    user_id = get_jwt_identity()
+    user = db.session.get(User, user_id)
+
+    if not user:
+        return jsonify({'error': 'Not Found', 'message': 'User not found.'}), 404
+
+    if not user.farmer_profile:
+        return jsonify({'error': 'Forbidden', 'message': 'Only farmers can create products.'}), 403
+
+    data = request.get_json()
+
+    try:
+        # Validate and deserialize the incoming data
+        new_product = product_schema.load(data, session=db.session)
+        new_product.farmer_id = user.farmer_profile.id
+
+        db.session.add(new_product)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Product created successfully!',
+            'product': product_schema.dump(new_product)
+        }), 201
+
+    except ValidationError as err:
+        return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+
 @product_bp.route('/farmers/<string:farmer_id>', methods=['GET'])
 def list_farmer_products(farmer_id):
     """
