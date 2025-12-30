@@ -17,6 +17,7 @@ class Product(BaseModel):
     stock_quantity = db.Column(db.Integer, default=0)  # Track inventory
     image_url = db.Column(db.Text)
     is_available = db.Column(db.Boolean, default=True)
+    view_count = db.Column(db.Integer, default=0)  # Track product views for analytics
 
     # Relationship to Farmer model (one-to-many)
     farmer = db.relationship('Farmer', back_populates='products')
@@ -47,6 +48,7 @@ class Product(BaseModel):
             'stock_quantity': self.stock_quantity,
             'image_url': self.image_url,
             'is_available': self.is_available,
+            'view_count': self.view_count,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }

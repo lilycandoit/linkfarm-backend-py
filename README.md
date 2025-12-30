@@ -34,6 +34,8 @@ The project is a production‑ready MVP that demonstrates clean architecture and
 *   **Database:** PostgreSQL (Supabase) managed with SQLAlchemy 2.0.
 *   **Migrations:** Robust schema version control using Alembic.
 *   **Validation:** Strict schema enforcement via Marshmallow.
+*   **Real-time Features:** WebSocket integration (Flask-SocketIO) for instant inquiry notifications.
+*   **Analytics:** Comprehensive dashboard with inquiry tracking, product view metrics, and conversion analytics.
 *   **Security:**
     *   Password hashing with `bcrypt`.
     *   Strict ownership checks on all write/update operations.
@@ -44,11 +46,11 @@ The project is a production‑ready MVP that demonstrates clean architecture and
 ## 🚀 Future Roadmap: What's Next?
 To take LinkFarm to the next level of production readiness, I plan to focus on:
 
-1.  **Search & Filtering Polish**: Implement PostgreSQL full-text search and advanced category/location filtering.
-2.  **Real-time Alerts**: Integrate **WebSockets (Flask-SocketIO)** for instant inquiry notifications on the farmer dashboard.
+1.  **Search & Filtering Polish**: Implement PostgreSQL full-text search and advanced category/location filtering. *(Completed)*
+2.  ✅ **Real-time Alerts**: Integrate **WebSockets (Flask-SocketIO)** for instant inquiry notifications on the farmer dashboard. *(Completed)*
 3.  **Advanced AI Integration**: Use Computer Vision (Gemini 2.0) to analyze product images and suggest optimal pricing/tags.
 4.  **Performance Optimization**: Implement Redis caching for high-traffic public listings and server-side image processing for optimized load times.
-5.  **Analytics Dashboard**: Provide farmers with simple charts tracking inquiry volume and product views over time.
+5.  ✅ **Analytics Dashboard**: Provide farmers with simple charts tracking inquiry volume and product views over time. *(Completed)*
 
 ---
 

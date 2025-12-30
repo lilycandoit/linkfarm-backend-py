@@ -64,6 +64,7 @@ def create_app(config_name=None):
     from routes.upload import upload_bp
     from routes.dashboard import dashboard_bp
     from routes.ai import ai_bp
+    from routes.analytics import analytics_bp
 
     # All blueprints are registered under the /api prefix
     app.register_blueprint(main_bp, url_prefix='/api')
@@ -74,6 +75,7 @@ def create_app(config_name=None):
     app.register_blueprint(upload_bp, url_prefix='/api/upload')
     app.register_blueprint(dashboard_bp, url_prefix='/api')
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
+    app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
 
     # --- Register WebSocket handlers ---
     # This must be imported after socketio is initialized

@@ -1,69 +1,47 @@
-from flask import Blueprint, request, jsonify
-from marshmallow import ValidationError
-from flask_jwt_extended import jwt_required, get_jwt_identity
-
-from extensions import db
+from extensions import db, ma
+from sqlalchemy import or_
+from models.product import Product
 from models.farmer import Farmer
 from models.user import User
-from models.product import Product
-from schemas.product_schema import product_schema, products_schema
+from schemas.product_schema import ProductSchema
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from marshmallow import ValidationError
 
 # Create a Blueprint for product routes
 product_bp = Blueprint('product', __name__)
 
-@product_bp.route('', methods=['POST'])
-@jwt_required()
-def create_product():
-    """
-    Creates a new product for the authenticated farmer.
-    The product is automatically associated with the logged-in farmer.
-    """
-    user_id = get_jwt_identity()
-    user = db.session.get(User, user_id)
-
-    # Ensure the user has a farmer profile before they can create a product.
-    if not user or not user.farmer_profile:
-        return jsonify({'error': 'Forbidden', 'message': 'You must have a farmer profile to create products.'}), 403
-
-    data = request.get_json()
-    try:
-        # Use the schema to validate and create a Product instance
-        new_product = product_schema.load(data)
-        # Securely associate the product with the logged-in farmer
-        new_product.farmer_id = user.farmer_profile.id
-
-        db.session.add(new_product)
-        db.session.commit()
-
-        # Return the serialized new product data
-        return jsonify({
-            'message': 'Product created successfully!',
-            'product': product_schema.dump(new_product)
-        }), 201
-    except ValidationError as err:
-        return jsonify({'error': 'Validation Error', 'messages': err.messages}), 400
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+# Initialize the schema
+product_schema = ProductSchema()
+products_schema = ProductSchema(many=True)
 
 @product_bp.route('', methods=['GET'])
 def list_all_products():
     """
-    Public endpoint to retrieve a paginated list of products with advanced filtering.
-    Supports: search, categories, locations, price range, and sorting.
+    Lists all available products with advanced filtering and sorting.
+    This is a public endpoint accessible to all users.
+
+    Query Parameters:
+    - page (int): Page number for pagination (default: 1)
+    - per_page (int): Number of items per page (default: 20)
+    - search (str): Search term for product name, description, or farm name
+    - category (list): Filter by one or more categories
+    - location (list): Filter by one or more farmer locations
+    - min_price (float): Minimum price filter
+    - max_price (float): Maximum price filter
+    - sort_by (str): Sort order - 'newest', 'price-low', 'price-high', 'name'
     """
+    # Pagination parameters
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
 
-    # Filtering parameters
-    search_term = request.args.get('search', None, type=str)
-    categories = request.args.getlist('category') # Supports multiple categories
-    locations = request.args.getlist('location')   # Supports multiple locations
+    # Filter parameters
+    search_term = request.args.get('search', '').strip()
+    categories = request.args.getlist('category')  # Can pass multiple: ?category=Fruits&category=Vegetables
+    locations = request.args.getlist('location')
     min_price = request.args.get('min_price', type=float)
     max_price = request.args.get('max_price', type=float)
-
-    # Sorting parameter
-    sort_by = request.args.get('sort_by', 'newest', type=str)
+    sort_by = request.args.get('sort_by', 'newest')  # newest, price-low, price-high, name
 
     # Base query
     select_query = db.select(Product).join(Farmer).filter(Product.is_available == True)
@@ -102,27 +80,69 @@ def list_all_products():
         # Default: newest first
         select_query = select_query.order_by(Product.created_at.desc())
 
-    # Execute paginated query
-    pagination = db.paginate(select_query, page=page, per_page=per_page, error_out=False)
-    products = pagination.items
+    # Execute the query with pagination
+    paginated_products = db.paginate(
+        select_query,
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
 
+    # Serialize the results
     return jsonify({
-        'products': products_schema.dump(products),
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': pagination.page
+        'products': [p.to_dict(include_farmer=True) for p in paginated_products.items],
+        'pagination': {
+            'page': paginated_products.page,
+            'per_page': paginated_products.per_page,
+            'total': paginated_products.total,
+            'pages': paginated_products.pages
+        }
     }), 200
+
+@product_bp.route('/farmers/<string:farmer_id>', methods=['GET'])
+def list_farmer_products(farmer_id):
+    """
+    Lists all products for a specific farmer.
+    This is a public endpoint.
+    """
+    products = db.session.execute(
+        db.select(Product).filter_by(farmer_id=farmer_id)
+    ).scalars().all()
+
+    return jsonify([p.to_dict() for p in products]), 200
 
 @product_bp.route('/<string:product_id>', methods=['GET'])
 def get_product(product_id):
     """
-    Retrieves a specific product by ID. This is a public endpoint.
+    Retrieves a single product by ID.
+    This is a public endpoint.
     """
     product = db.session.get(Product, product_id) # .get() is the most efficient way to query by primary key
     if not product:
         return jsonify({'error': 'Not Found', 'message': 'Product not found.'}), 404
 
+    # Increment view count for analytics
+    product.view_count += 1
+    db.session.commit()
+
     return jsonify(product_schema.dump(product)), 200
+
+@product_bp.route('/<string:product_id>/view', methods=['POST'])
+def track_product_view(product_id):
+    """
+    Tracks a product view for analytics.
+    This is a lightweight endpoint that just increments the view counter.
+    Public endpoint - no authentication required.
+    """
+    product = db.session.get(Product, product_id)
+    if not product:
+        return jsonify({'error': 'Not Found', 'message': 'Product not found.'}), 404
+
+    # Increment view count
+    product.view_count += 1
+    db.session.commit()
+
+    return jsonify({'message': 'View tracked', 'view_count': product.view_count}), 200
 
 @product_bp.route('/<string:product_id>', methods=['PUT'])
 @jwt_required()
