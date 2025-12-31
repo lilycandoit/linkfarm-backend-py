@@ -19,6 +19,8 @@ from extensions import db
 from models.inquiry import Inquiry
 from models.farmer import Farmer
 from models.user import User
+from models.product import Product
+from services.email_service import send_inquiry_notification
 
 # Create a Blueprint for inquiry routes
 inquiry_bp = Blueprint('inquiry', __name__)
@@ -54,6 +56,35 @@ def create_inquiry():
         )
         db.session.add(new_inquiry)
         db.session.commit()
+
+        # Send email notification to farmer (non-blocking)
+        try:
+            farmer = db.session.get(Farmer, data['farmer_id'])
+            if farmer and farmer.user:
+                # Get product name if product_id was provided
+                product_name = 'your product'
+                if data.get('product_id'):
+                    product = db.session.get(Product, data['product_id'])
+                    if product:
+                        product_name = product.name
+
+                # Prepare inquiry data for email
+                inquiry_data = {
+                    'customer_name': data['customer_name'],
+                    'customer_phone': data.get('customer_phone', 'Not provided'),
+                    'product_name': product_name,
+                    'message': data['message']
+                }
+
+                # Send email (this won't block the response)
+                send_inquiry_notification(
+                    farmer_email=farmer.user.email,
+                    farmer_name=farmer.name,
+                    inquiry_data=inquiry_data
+                )
+        except Exception as email_error:
+            # Log the error but don't fail the inquiry creation
+            print(f'Email notification failed: {str(email_error)}')
 
         return jsonify({'message': 'Inquiry submitted successfully!'}), 201
     except Exception as e:

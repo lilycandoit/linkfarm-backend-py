@@ -1,96 +1,94 @@
 # LinkFarm Backend API 🚜
-**Empowering local farmers through direct digital connections.**
+**A backend service enabling discovery and direct communication between local farmers and consumers.**
 
-**Live Demo:** [https://link-farm-gules.vercel.app](https://link-farm-gules.vercel.app)
-**Project Type:** Backend‑Focused Full‑Stack Demo (Portfolio)
-
----
-
-## 💡 The Inspiration
-I grew up in a rural farming community where I saw my parents and neighbours work incredibly hard, only to lose most of their profits to middlemen. LinkFarm is a personal project designed to explore how a simple digital connection can remove barriers between rural producers and urban consumers.
-
-Unlike complex e-commerce platforms, LinkFarm focuses on **discovery and communication over transactions**.
+**Live Demo (Frontend):** https://link-farm-gules.vercel.app
+**Project Type:** Backend-Focused Full-Stack Portfolio Project
 
 ---
 
-## 🛠️ Current Capabilities
-The project is a production‑ready MVP that demonstrates clean architecture and secure data handling:
+## 💡 Background
+I grew up in a rural farming community and saw firsthand how farmers often lose value to intermediaries.
+LinkFarm explores how a **simple, well-structured backend** can support direct discovery and communication — without the complexity of a full e-commerce system.
 
-*   **Secure Auth:** JWT‑based authentication with cross‑origin resource sharing (CORS).
-*   **Farmer Dashboards:** Dedicated space for farmers to manage listings and incoming inquiries.
-*   **Product Discovery:** Real-time product listings with public detail pages.
-*   **Direct Communication:**
-    *   Mandatory customer phone numbers for direct follow‑ups.
-    *   **Facebook Messenger integration** for instant chatting.
-    *   Inquiry tracking with ownership‑based authorization.
-*   **AI Assistance:** Integrated Google Gemini to auto‑generate persuasive product descriptions.
-*   **Internationalisation (i18n):** Multi‑language support structure (English/Vietnamese).
-*   **Cloud Image Storage:** Cloudinary integration for optimized image delivery and CDN distribution.
+The goal is clarity, reliability, and real-world backend patterns.
 
 ---
 
-## 🏗️ Technical Architecture & Quality
-*   **Backend:** Python/Flask following a modular Blueprint-based structure.
-*   **Database:** PostgreSQL (Supabase) managed with SQLAlchemy 2.0.
-*   **Migrations:** Robust schema version control using Alembic (Flask-Migrate).
-*   **Validation:** Strict schema enforcement via Marshmallow.
-*   **Analytics:** Comprehensive dashboard with inquiry tracking, product view metrics, and conversion analytics.
-*   **AI Integration:** Google Gemini for automated product description generation.
-*   **Image Optimization:** Frontend uploads directly to Cloudinary for automatic compression and CDN delivery.
-*   **Security:**
-    *   Password hashing with `bcrypt`.
-    *   JWT-based authentication with Flask-JWT-Extended.
-    *   Strict ownership checks on all write/update operations.
-    *   Environment-driven configuration management.
+## ⚙️ What This API Does
+This backend powers the core functionality of LinkFarm as a production-ready MVP:
+
+- **Authentication & Authorization**
+  - JWT-based authentication
+  - Ownership checks for all write operations
+  - Secure password hashing with `bcrypt`
+
+- **Product & Inquiry Management**
+  - CRUD operations for farm products
+  - Public product discovery endpoints
+  - Inquiry submission and tracking per farmer
+
+- **Direct Communication Support**
+  - Mandatory customer phone numbers for follow-ups
+  - Facebook Messenger (`m.me`) deep-link integration
+  - Email notifications sent instantly when inquiries are received
+
+- **AI-Assisted Content (Optional Layer)**
+  - Image-based product analysis (name, category, price suggestion)
+  - Auto-generated product descriptions
+  - Designed as a service layer, not tightly coupled to core logic
+
+- **Internationalisation (i18n)**
+  - Backend-ready structure for English / Vietnamese content
+
+- **Media Handling**
+  - Cloudinary integration for optimized image storage and CDN delivery
 
 ---
 
-## 🚀 Future Roadmap: What's Next?
-To take LinkFarm to the next level of production readiness, I plan to focus on:
+## 🏗️ Architecture & Engineering Choices
+- **Framework:** Python + Flask (Blueprint-based modular structure)
+- **Database:** PostgreSQL (Supabase)
+- **ORM:** SQLAlchemy 2.0
+- **Migrations:** Alembic (Flask-Migrate)
+- **Validation:** Marshmallow schemas
+- **Email Service:** Resend (transactional HTML emails)
+- **AI Integration:** Google Gemini 2.5 Flash (vision + text)
+- **Configuration:** Environment-based settings
+- **Security:**
+  - JWT via Flask-JWT-Extended
+  - CORS configuration
+  - Strict access control on all sensitive routes
 
-1.  ✅ **Search & Filtering**: Advanced category/location filtering with multi-criteria search. *(Completed)*
-2.  ✅ **Image Optimization**: Cloudinary CDN integration for automatic compression and responsive delivery. *(Completed)*
-3.  **Advanced AI Integration**: Use Computer Vision (Gemini 2.0) to analyze product images and suggest optimal pricing/category tags.
-4.  **Email Notifications**: SendGrid integration for instant inquiry alerts to farmers via email.
-5.  ✅ **Analytics Dashboard**: Comprehensive charts tracking inquiry volume, product views, and engagement metrics. *(Completed)*
+The focus is on **maintainability, clear separation of concerns, and real-world backend workflows**.
 
 ---
 
-## � Local Development
+## 🚀 Next Chapter (Planned Improvements)
+- Interactive farm location mapping
+- Role-based permissions (admin / farmer)
+- More comprehensive test coverage
+
+These are intentionally left out of the MVP to keep the system focused and understandable.
+
+---
+
+## 💻 Local Development
 
 ### Prerequisites
 - Python 3.9+
 - PostgreSQL
 - `pip` + `virtualenv`
 
-### Quick Start
+### Setup
 ```bash
-# 1. Setup Environment
 git clone https://github.com/lilycandoit/linkfarm-backend-py.git
 cd linkfarm-backend-py
+
 python3 -m venv venv
 source venv/bin/activate
 
-# 2. Dependencies & Config
 pip install -r requirements.txt
 cp .env.example .env
 
-# 3. Database Sync
 flask db upgrade
-
-# 4. Launch
 python app.py
-```
-*API serves at: `http://localhost:5000`*
-
-### Maintenance Commands
-*   **Migrations:** `flask db migrate -m "change description"` then `flask db upgrade`
-*   **Rollback:** `flask db downgrade`
-*   **Seeding:** Import `seed_data.sql` via your DB management tool.
-
----
-
-## 👩‍💻 Author
-**LiDuong**
-*Building software that solves real-world needs.*
-GitHub: [https://github.com/lilycandoit](https://github.com/lilycandoit)
