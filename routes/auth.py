@@ -182,3 +182,122 @@ def update_settings():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Internal Server Error', 'message': str(e)}), 500
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    """
+    Initiates password reset process by sending reset email.
+    Expects JSON with 'email' field.
+    Returns generic success message to prevent email enumeration.
+    """
+    data = request.get_json()
+
+    if not data or 'email' not in data:
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Email is required.'
+        }), 400
+
+    email = data.get('email', '').strip().lower()
+
+    # Find user by email
+    user = db.session.execute(
+        db.select(User).where(User.email == email)
+    ).scalar_one_or_none()
+
+    # IMPORTANT: Always return success to prevent email enumeration
+    # Don't reveal if email exists or not
+    if user:
+        # Generate reset token
+        token = user.generate_reset_token()
+
+        try:
+            db.session.commit()
+
+            # Send reset email
+            from services.email_service import send_password_reset_email
+            send_password_reset_email(user.email, user.username, token)
+
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Failed to process password reset: {str(e)}')
+            # Still return success to user to prevent enumeration
+
+    # Generic success message regardless of whether email exists
+    return jsonify({
+        'message': 'If an account exists with that email, a password reset link has been sent.'
+    }), 200
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    """
+    Completes password reset with token validation.
+    Expects JSON with 'token' and 'new_password'.
+    After successful reset, returns a new JWT for auto-login.
+    """
+    data = request.get_json()
+
+    if not data or not all(key in data for key in ['token', 'new_password']):
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Token and new password are required.'
+        }), 400
+
+    token = data.get('token')
+    new_password = data.get('new_password')
+
+    # Validate password strength
+    if len(new_password) < 8:
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Password must be at least 8 characters long.'
+        }), 400
+
+    # Find user by reset token
+    user = db.session.execute(
+        db.select(User).where(User.reset_token == token)
+    ).scalar_one_or_none()
+
+    if not user:
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Invalid or expired reset token.'
+        }), 400
+
+    # Verify token is valid and not expired
+    if not user.verify_reset_token(token):
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'Invalid or expired reset token.'
+        }), 400
+
+    try:
+        # Update password
+        user.set_password(new_password)
+
+        # Clear reset token (one-time use)
+        user.clear_reset_token()
+
+        db.session.commit()
+
+        # Create new JWT for auto-login (invalidates old sessions)
+        # Note: In JWT, we can't truly "invalidate" old tokens server-side
+        # unless we implement a token blacklist. However, by issuing a new token
+        # and user changing their password, any compromised tokens become less useful
+        # as the attacker no longer knows the new password.
+        additional_claims = {"role": user.role, "username": user.username}
+        new_token = create_access_token(identity=user.id, additional_claims=additional_claims)
+
+        return jsonify({
+            'message': 'Password reset successful.',
+            'token': new_token  # Auto-login token
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Failed to reset password: {str(e)}')
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'An error occurred while resetting your password.'
+        }), 500

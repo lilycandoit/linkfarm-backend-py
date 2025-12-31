@@ -183,3 +183,90 @@ def send_welcome_email(farmer_email: str, farmer_name: str) -> bool:
     except Exception as e:
         current_app.logger.error(f'Failed to send welcome email: {str(e)}')
         return False
+
+
+def send_password_reset_email(user_email: str, username: str, reset_token: str) -> bool:
+    """
+    Send password reset email with secure token link.
+
+    Args:
+        user_email: User's email address
+        username: User's username for personalization
+        reset_token: Secure reset token
+
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+
+    if not resend.api_key:
+        current_app.logger.warning('RESEND_API_KEY not configured. Password reset email skipped.')
+        return False
+
+    try:
+        # Get frontend URL from environment (for reset link)
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        reset_link = f"{frontend_url}/reset-password/{reset_token}"
+
+        params = {
+            "from": "LinkFarm <onboarding@resend.dev>",
+            "to": [user_email],
+            "subject": "🔒 Reset Your LinkFarm Password",
+            "html": f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background-color: #10b981; color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }}
+        .content {{ background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }}
+        .cta {{ display: inline-block; margin-top: 20px; padding: 12px 24px; background-color: #10b981; color: white; text-decoration: none; border-radius: 6px; }}
+        .footer {{ margin-top: 20px; padding: 15px; background-color: #f3f4f6; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px; color: #6b7280; }}
+        .warning {{ background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 15px 0; }}
+        .code {{ background-color: #f3f4f6; padding: 8px 12px; border-radius: 4px; font-family: monospace; font-size: 14px; word-break: break-all; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Password Reset Request 🔒</h1>
+        </div>
+        <div class="content">
+            <p>Hi {username},</p>
+            <p>We received a request to reset your LinkFarm password. Click the button below to create a new password:</p>
+
+            <center>
+                <a href="{reset_link}" class="cta">Reset Password</a>
+            </center>
+
+            <p style="margin-top: 20px;">Or copy and paste this link into your browser:</p>
+            <p class="code">{reset_link}</p>
+
+            <div class="warning">
+                <strong>⚠️ Security Notice:</strong><br>
+                • This link expires in <strong>15 minutes</strong><br>
+                • If you didn't request this reset, please ignore this email<br>
+                • Your password will not change unless you click the link above
+            </div>
+
+            <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
+                If you're having trouble clicking the button, contact our support team.
+            </p>
+        </div>
+        <div class="footer">
+            <p>This email was sent by <strong>LinkFarm</strong></p>
+            <p>Connecting local farmers with customers</p>
+        </div>
+    </div>
+</body>
+</html>
+            """,
+        }
+
+        email = resend.Emails.send(params)
+        current_app.logger.info(f'Password reset email sent to {user_email}. Email ID: {email["id"]}')
+        return True
+
+    except Exception as e:
+        current_app.logger.error(f'Failed to send password reset email: {str(e)}')
+        return False
