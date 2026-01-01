@@ -5,7 +5,7 @@ from models.farmer import Farmer
 from models.user import User
 from schemas.product_schema import ProductSchema
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from marshmallow import ValidationError
 
 # Create a Blueprint for product routes
@@ -196,8 +196,9 @@ def update_product(product_id):
         return jsonify({'error': 'Not Found', 'message': 'Product not found.'}), 404
 
     # --- Crucial Ownership Check ---
+    jwt_claims = get_jwt()
+    is_admin = jwt_claims.get('role') == 'admin'
     is_owner = user.farmer_profile and user.farmer_profile.id == product.farmer_id
-    is_admin = user.role == 'admin'
 
     if not is_owner and not is_admin:
         return jsonify({'error': 'Forbidden', 'message': 'You are not authorized to update this product.'}), 403
@@ -231,8 +232,9 @@ def delete_product(product_id):
         return jsonify({'error': 'Not Found', 'message': 'Product not found.'}), 404
 
     # --- Crucial Ownership Check ---
+    jwt_claims = get_jwt()
+    is_admin = jwt_claims.get('role') == 'admin'
     is_owner = user.farmer_profile and user.farmer_profile.id == product.farmer_id
-    is_admin = user.role == 'admin'
 
     if not is_owner and not is_admin:
         return jsonify({'error': 'Forbidden', 'message': 'You are not authorized to delete this product.'}), 403

@@ -29,6 +29,8 @@ instance/
 
 # Uploaded files
 uploads/
+scripts/
+
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml

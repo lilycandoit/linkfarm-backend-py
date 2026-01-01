@@ -58,6 +58,7 @@ def create_app(config_name=None):
     from routes.dashboard import dashboard_bp
     from routes.ai import ai_bp
     from routes.analytics import analytics_bp
+    from routes.admin import admin_bp
 
     # All blueprints are registered under the /api prefix
     app.register_blueprint(main_bp, url_prefix='/api')
@@ -69,6 +70,7 @@ def create_app(config_name=None):
     app.register_blueprint(dashboard_bp, url_prefix='/api')
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
     # Conditionally register the development blueprint
     if app.config['DEBUG']:

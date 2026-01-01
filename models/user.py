@@ -88,3 +88,19 @@ class User(BaseModel):
         """Clear the reset token after successful password reset (one-time use)."""
         self.reset_token = None
         self.reset_token_expiry = None
+
+    def to_dict(self):
+        """
+        Convert User object to dictionary for JSON serialization.
+
+        Returns:
+            dict: User data (excludes password_hash and reset_token for security)
+        """
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'role': self.role,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

@@ -21,6 +21,7 @@ from models.farmer import Farmer
 from models.user import User
 from models.product import Product
 from services.email_service import send_inquiry_notification
+from utils.auth_decorators import farmer_or_admin_required
 
 # Create a Blueprint for inquiry routes
 inquiry_bp = Blueprint('inquiry', __name__)
@@ -93,6 +94,7 @@ def create_inquiry():
 
 @inquiry_bp.route('/farmers/<string:farmer_id>/inquiries', methods=['GET'])
 @jwt_required()
+@farmer_or_admin_required
 def list_inquiries_for_farmer(farmer_id):
     """
     Retrieves all inquiries for a specific farmer.
@@ -106,13 +108,6 @@ def list_inquiries_for_farmer(farmer_id):
     if not user:
         return jsonify({'error': 'Unauthorized', 'message': 'User not found.'}), 401
 
-    # Check role - must be farmer or admin
-    jwt_claims = get_jwt()
-    user_role = jwt_claims.get('role', 'user')
-
-    if user_role not in ['farmer', 'admin']:
-        return jsonify({'error': 'Forbidden', 'message': 'This endpoint requires farmer or admin role.'}), 403
-
     # Get the farmer
     farmer = db.session.get(Farmer, farmer_id)
     if not farmer:
@@ -120,7 +115,8 @@ def list_inquiries_for_farmer(farmer_id):
 
     # --- Crucial Ownership Check ---
     # The user must be an admin OR they must be the farmer whose inquiries are being requested
-    is_admin = user_role == 'admin'
+    jwt_claims = get_jwt()
+    is_admin = jwt_claims.get('role') == 'admin'
     is_owner = user.farmer_profile and user.farmer_profile.id == farmer_id
 
     if not is_admin and not is_owner:
@@ -134,6 +130,7 @@ def list_inquiries_for_farmer(farmer_id):
 
 @inquiry_bp.route('/<string:inquiry_id>', methods=['PUT'])
 @jwt_required()
+@farmer_or_admin_required
 def update_inquiry_status(inquiry_id):
     """
     Updates the status of an inquiry (e.g., from 'new' to 'read').
@@ -147,19 +144,13 @@ def update_inquiry_status(inquiry_id):
     if not user:
         return jsonify({'error': 'Unauthorized', 'message': 'User not found.'}), 401
 
-    # Check role - must be farmer or admin
-    jwt_claims = get_jwt()
-    user_role = jwt_claims.get('role', 'user')
-
-    if user_role not in ['farmer', 'admin']:
-        return jsonify({'error': 'Forbidden', 'message': 'This endpoint requires farmer or admin role.'}), 403
-
     inquiry = db.session.get(Inquiry, inquiry_id)
     if not inquiry:
         return jsonify({'error': 'Not Found', 'message': 'Inquiry not found.'}), 404
 
     # --- Ownership Check ---
-    is_admin = user_role == 'admin'
+    jwt_claims = get_jwt()
+    is_admin = jwt_claims.get('role') == 'admin'
     is_owner = user.farmer_profile and user.farmer_profile.id == inquiry.farmer_id
 
     if not is_admin and not is_owner:
@@ -176,6 +167,7 @@ def update_inquiry_status(inquiry_id):
 
 @inquiry_bp.route('/<string:inquiry_id>', methods=['DELETE'])
 @jwt_required()
+@farmer_or_admin_required
 def delete_inquiry(inquiry_id):
     """
     Deletes an inquiry.
@@ -189,19 +181,13 @@ def delete_inquiry(inquiry_id):
     if not user:
         return jsonify({'error': 'Unauthorized', 'message': 'User not found.'}), 401
 
-    # Check role - must be farmer or admin
-    jwt_claims = get_jwt()
-    user_role = jwt_claims.get('role', 'user')
-
-    if user_role not in ['farmer', 'admin']:
-        return jsonify({'error': 'Forbidden', 'message': 'This endpoint requires farmer or admin role.'}), 403
-
     inquiry = db.session.get(Inquiry, inquiry_id)
     if not inquiry:
         return jsonify({'error': 'Not Found', 'message': 'Inquiry not found.'}), 404
 
     # --- Ownership Check ---
-    is_admin = user_role == 'admin'
+    jwt_claims = get_jwt()
+    is_admin = jwt_claims.get('role') == 'admin'
     is_owner = user.farmer_profile and user.farmer_profile.id == inquiry.farmer_id
 
     if not is_admin and not is_owner:

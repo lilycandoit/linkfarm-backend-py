@@ -22,10 +22,12 @@ This backend powers the core functionality of LinkFarm as a production-ready MVP
 
 * **Authentication & Authorization**
 
-  * JWT-based authentication
+  * JWT-based authentication with role-based access control (RBAC)
+  * Three user roles: `user`, `farmer`, `admin`
   * Ownership checks for all write operations
   * Secure password hashing with `bcrypt`
   * **Password Reset:** Users can request a password reset via email verification
+  * **Admin Dashboard:** Platform-wide statistics and management capabilities
 
 * **Product & Inquiry Management**
 
@@ -125,7 +127,7 @@ python -m pytest tests/test_inquiry.py
 
 * **Automated tests:**
 
-  * 55+ tests covering authentication, product management, inquiries, password reset, and settings
+  * 70+ tests covering authentication, admin, product management, inquiries, password reset, and settings
   * Written with **pytest**
 
 * **CI/CD:**
@@ -138,5 +140,5 @@ python -m pytest tests/test_inquiry.py
 ## 🚀 Next Improvements
 
 * Interactive farm location mapping
-* Role-based permissions (admin / farmer)
 * Even more comprehensive test coverage
+* User activity analytics

@@ -6,7 +6,7 @@ from models.farmer import Farmer
 from models.user import User
 from schemas.farmer_schema import FarmerSchema
 from schemas.product_schema import products_schema
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 # Create a Blueprint for farmer routes
 farmer_bp = Blueprint('farmer', __name__)
@@ -172,7 +172,11 @@ def update_farmer_profile(farmer_id):
         return jsonify({'error': 'Not Found', 'message': 'Farmer profile not found.'}), 404
 
     # Check authorization: must be the owner or an admin
-    if farmer.user_id != user_id and user.role != 'admin':
+    jwt_claims = get_jwt()
+    is_admin = jwt_claims.get('role') == 'admin'
+    is_owner = farmer.user_id == user_id
+
+    if not is_owner and not is_admin:
         return jsonify({'error': 'Forbidden', 'message': 'You do not have the necessary permissions to access this resource.'}), 403
 
     data = request.get_json()
