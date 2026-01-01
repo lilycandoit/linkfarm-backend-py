@@ -84,6 +84,11 @@ class TestingConfig(Config):
     JWT_SECRET_KEY = 'test-secret-key'
     CORS_ORIGINS = 'http://localhost:5173'  # Allow CORS in tests
 
+    # Override PostgreSQL-specific pool settings - SQLite doesn't support these
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,  # Keep this for connection health checks
+    }
+
 class ProductionConfig(Config):
     """
     Configuration for the live production environment.
