@@ -1,0 +1,39 @@
+name: Keep Database Active
+
+# Run every 6 days to prevent Supabase from pausing the database
+# Supabase pauses after 7 days of inactivity, so 6 days is safe
+on:
+  schedule:
+    # Runs at 3:00 AM UTC every 6 days (day 1, 7, 13, 19, 25, 31)
+    - cron: '0 3 1,7,13,19,25,31 * *'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  ping-database:
+    name: Ping health endpoint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          echo "🔄 Pinging health endpoint to keep Supabase database active..."
+
+          # Replace with your actual Vercel backend URL
+          BACKEND_URL="${{ secrets.BACKEND_URL || 'https://your-backend.vercel.app' }}"
+
+          # Make HTTP request to health endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/api/health")
+
+          if [ "$response" = "200" ]; then
+            echo "✅ Health check successful! Database connection active."
+          else
+            echo "⚠️ Health check returned status code: $response"
+            exit 1
+          fi
+
+      - name: Log timestamp
+        if: always()
+        run: |
+          echo "📅 Last database activity: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
