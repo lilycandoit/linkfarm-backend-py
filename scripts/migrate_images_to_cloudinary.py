@@ -13,17 +13,17 @@ Features:
 - Detailed progress tracking and error handling
 
 Usage:
-    # Dry run (preview changes without modifying database)
+    # Dry run development database (preview changes)
     python scripts/migrate_images_to_cloudinary.py --dry-run
 
-    # Migrate only products
-    python scripts/migrate_images_to_cloudinary.py --products
+    # Dry run PRODUCTION database (recommended before migrating!)
+    python scripts/migrate_images_to_cloudinary.py --env production --dry-run
 
-    # Migrate only farmers
-    python scripts/migrate_images_to_cloudinary.py --farmers
+    # Migrate production images
+    python scripts/migrate_images_to_cloudinary.py --env production
 
-    # Migrate everything (products + farmers)
-    python scripts/migrate_images_to_cloudinary.py
+    # Migrate only products in production
+    python scripts/migrate_images_to_cloudinary.py --env production --products
 
 Requirements:
     pip install cloudinary requests python-dotenv
@@ -35,6 +35,7 @@ import argparse
 import requests
 from datetime import datetime
 from urllib.parse import urlparse
+from dotenv import load_dotenv
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -316,20 +317,29 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Preview what would be migrated (recommended first step)
+  # Preview development database (recommended first step)
   python scripts/migrate_images_to_cloudinary.py --dry-run
 
-  # Migrate only products
-  python scripts/migrate_images_to_cloudinary.py --products
+  # Preview PRODUCTION database (check before migrating!)
+  python scripts/migrate_images_to_cloudinary.py --env production --dry-run
 
-  # Migrate only farmers
-  python scripts/migrate_images_to_cloudinary.py --farmers
+  # Migrate production images
+  python scripts/migrate_images_to_cloudinary.py --env production
 
-  # Migrate everything
-  python scripts/migrate_images_to_cloudinary.py
+  # Migrate only products in production
+  python scripts/migrate_images_to_cloudinary.py --env production --products
+
+  # Migrate only farmers in production
+  python scripts/migrate_images_to_cloudinary.py --env production --farmers
         """
     )
 
+    parser.add_argument(
+        '--env',
+        choices=['development', 'production'],
+        default='development',
+        help='Environment to use (loads from .env or .env.production)'
+    )
     parser.add_argument(
         '--dry-run',
         action='store_true',
@@ -348,6 +358,28 @@ Examples:
 
     args = parser.parse_args()
 
+    # Load environment file based on --env argument
+    if args.env == 'production':
+        env_file = '.env.production'
+        os.environ['FLASK_ENV'] = 'production'
+        print(f"\n🌍 Loading production environment from {env_file}")
+    else:
+        env_file = '.env'
+        os.environ['FLASK_ENV'] = 'development'
+        print(f"\n🌍 Loading development environment from {env_file}")
+
+    # Load the environment file BEFORE creating Flask app
+    load_dotenv(env_file, override=True)
+
+    # Verify database URL is loaded
+    db_url = os.getenv('DATABASE_URL', '')
+    if 'supabase' in db_url:
+        print(f"✅ Database: Production (Supabase)")
+    elif 'localhost' in db_url or '127.0.0.1' in db_url:
+        print(f"✅ Database: Development (Localhost)")
+    else:
+        print(f"⚠️  Database: {db_url[:40]}...")
+
     # Create Flask app context
     app = create_app()
 
@@ -357,6 +389,7 @@ Examples:
         print("\n" + "="*60)
         print("🖼️  IMAGE MIGRATION TOOL")
         print("="*60)
+        print(f"Environment: {args.env.upper()}")
         print(f"Mode: {'🔍 DRY RUN' if args.dry_run else '✅ LIVE MIGRATION'}")
         print("="*60)
 
