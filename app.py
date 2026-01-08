@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -54,7 +54,6 @@ def create_app(config_name=None):
     from routes.farmer import farmer_bp
     from routes.product import product_bp
     from routes.inquiry import inquiry_bp
-    from routes.upload import upload_bp
     from routes.dashboard import dashboard_bp
     from routes.ai import ai_bp
     from routes.analytics import analytics_bp
@@ -66,7 +65,6 @@ def create_app(config_name=None):
     app.register_blueprint(farmer_bp, url_prefix='/api/farmers')
     app.register_blueprint(product_bp, url_prefix='/api/products')
     app.register_blueprint(inquiry_bp, url_prefix='/api/inquiries')
-    app.register_blueprint(upload_bp, url_prefix='/api/upload')
     app.register_blueprint(dashboard_bp, url_prefix='/api')
     app.register_blueprint(ai_bp, url_prefix='/api/ai')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
@@ -91,22 +89,7 @@ def create_app(config_name=None):
             'api_docs': '/api'
         }), 200
 
-    # --- 6. Serve Uploaded Files as Static Content ---
-    # This route allows the frontend to access uploaded images
-    # Example: http://localhost:5000/uploads/product-images/image.jpg
-    @app.route('/uploads/<path:subpath>/<filename>')
-    def serve_upload(subpath, filename):
-        """
-        Serve uploaded files (e.g., product images).
-
-        Security Note: In production, it's better to serve static files
-        through a proper web server (Nginx, Apache) or CDN for better performance.
-        This is acceptable for development and small deployments.
-        """
-        uploads_dir = os.path.join(app.root_path, 'uploads', subpath)
-        return send_from_directory(uploads_dir, filename)
-
-    # --- 7. Register Error Handlers ---
+    # --- 6. Register Error Handlers ---
     # This provides consistent JSON error responses instead of default HTML pages.
     @app.errorhandler(404)
     def not_found(_error):

@@ -7,6 +7,7 @@ env/
 .env.local
 .env.production
 .env.*.local
+.env.vercel  # Vercel CLI generated file (contains OIDC token)
 
 # Python cache files
 __pycache__/
@@ -29,7 +30,10 @@ instance/
 
 # Uploaded files
 uploads/
-scripts/
+
+# Scripts folder - KEEP TRACKED
+# We want to version control utility scripts like create_admin.py and migration scripts
+# !scripts/  # Uncommented - scripts should be committed
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*

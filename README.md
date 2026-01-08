@@ -22,38 +22,39 @@ This backend powers the core functionality of LinkFarm as a production-ready MVP
 
 * **Authentication & Authorization**
 
-  * JWT-based authentication with role-based access control (RBAC)
-  * Three user roles: `user`, `farmer`, `admin`
-  * Ownership checks for all write operations
+  * JWT-based authentication + role-based access control (RBAC)
+  * Roles: `user`, `farmer`, `admin`
+  * Ownership checks for write operations
   * Secure password hashing with `bcrypt`
-  * **Password Reset:** Users can request a password reset via email verification
-  * **Admin Dashboard:** Platform-wide statistics and management capabilities
+  * Password reset flow via email verification
+  * **Admin dashboard** for platform statistics and management
 
-* **Product & Inquiry Management**
+* **Products & Inquiries**
 
   * CRUD operations for farm products
   * Public product discovery endpoints
-  * Inquiry submission and tracking per farmer
+  * Inquiry submission + tracking per farmer
 
-* **Direct Communication Support**
+* **Direct Communication**
 
-  * Mandatory customer phone numbers for follow-ups
+  * Customer phone number required for follow-ups
   * Facebook Messenger (`m.me`) deep-link integration
-  * Instant email notifications for new inquiries
+  * Email notifications for new inquiries
 
-* **AI-Assisted Content (Optional Layer)**
+* **AI-Assisted Listings (Optional Layer)**
 
-  * Image-based product analysis (name, category, price suggestion)
+  * **Gemini Vision** image scanning to suggest **name, category, and price**
   * Auto-generated product descriptions
-  * Designed as a service layer, not tightly coupled to core logic
+  * Implemented as a service layer (kept separate from core business logic)
 
 * **Internationalisation (i18n)**
 
-  * Backend-ready structure for English / Vietnamese content
+  * English / Vietnamese support using a custom i18n structure
 
 * **Media Handling**
 
-  * Cloudinary integration for optimized image storage and CDN delivery
+  * **Cloudinary** for image uploads, automatic optimization, and CDN delivery
+  * Faster image loading compared to storing media directly in Supabase
 
 ---
 
